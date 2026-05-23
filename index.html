@@ -227,24 +227,95 @@ const forbidden = [
 ];
 
 const recipes = [
-  { name:"Bowl de Lentejas y Arroz", time:"20 min", servings:1, kcal:520, protein:28, batch:true, batchNote:"Prepara 4 porciones el domingo. Aguanta 4 días en frío.", category:"Almuerzo / Cena", icon:"🫘", ingredients:["200g lentejas cocidas (bote)","50g arroz integral cocido","200g espinacas frescas","1 diente ajo","1 cda aceite oliva","Comino, sal, pimiento"], steps:["Saltea el ajo en el aceite 1 min.","Añade las espinacas y saltea 2 min.","Incorpora las lentejas y el arroz.","Añade comino y sal. Listo."], tip:"Multiplica por 4 el domingo. Guarda en 4 tupers." },
-  { name:"Tortilla de 3 Huevos con Judías", time:"10 min", servings:1, kcal:420, protein:35, batch:false, category:"Desayuno / Cena", icon:"🍳", ingredients:["3 huevos","80g judías blancas en bote","1/4 cebolla","Sal, aceite de oliva"], steps:["Pica la cebolla y sofríe 3 min.","Añade las judías escurridas y calienta 2 min.","Bate los huevos, vierte encima, cuaja 3-4 min."], tip:"Comida de rescate en menos de 10 min. Alta proteína." },
-  { name:"Tofu al Horno con Boniato", time:"35 min", servings:2, kcal:530, protein:32, batch:true, batchNote:"Prepara 4 porciones. Hornea todo junto.", category:"Cena", icon:"🧊", ingredients:["400g tofu firme","400g boniato","2 cdas salsa soja","1 cda aceite sésamo","Ajo en polvo, cúrcuma, pimiento"], steps:["Precalienta horno a 200°C.","Corta tofu en cubos, marina 5 min en soja+aceite.","Corta boniato en dados, aliña con aceite y cúrcuma.","Hornea 25-30 min, da la vuelta a mitad."], tip:"Prepara 800g tofu + 800g boniato y tienes 4 cenas." },
-  { name:"Smoothie Proteico de Mañana", time:"3 min", servings:1, kcal:450, protein:42, batch:false, category:"Desayuno", icon:"🥤", ingredients:["300ml leche de soja sin azúcar","30g proteína de soja en polvo","1 plátano maduro","20g avena","1 cda mantequilla de cacahuete"], steps:["Mete todo en la batidora.","Bate 30 segundos.","Listo."], tip:"Congela el plátano pelado. Más frío y cremoso." },
-  { name:"Chili Vegetal Batch Cook", time:"40 min", servings:4, kcal:480, protein:26, batch:true, batchNote:"Prepara la olla entera. Congela en 4 porciones.", category:"Almuerzo / Cena", icon:"🌶️", ingredients:["1 bote alubias rojas (400g)","200g lentejas cocidas","400g tomate triturado","1 cebolla, 1 pimiento rojo","2 dientes ajo","Comino, pimentón, chile, sal"], steps:["Sofríe cebolla, ajo y pimiento 5 min.","Añade tomate y especias. Cocina 10 min.","Incorpora alubias y lentejas. 20 min a fuego lento.","Ajusta sal. Congela en porciones."], tip:"Con arroz integral es comida completa. Sin arroz, cena ligera." },
-  { name:"Tempeh Salteado Rápido", time:"15 min", servings:1, kcal:490, protein:34, batch:false, category:"Cena", icon:"🫕", ingredients:["150g tempeh","300g verdura wok (pimiento, calabacín, cebolla)","2 cdas salsa soja","1 cda aceite oliva","Ajo, jengibre rallado"], steps:["Corta tempeh en dados, sofríe 5 min hasta dorar.","Añade verduras y sofríe 5 min a fuego alto.","Incorpora salsa soja y jengibre. 2 min más."], tip:"El tempeh aguanta cortado 3 días en frío." },
-  { name:"Garbanzos Asados", time:"30 min (5 activos)", servings:3, kcal:220, protein:11, batch:true, batchNote:"Prepara 2 botes a la vez. Aguantan 5 días hermético.", category:"Snack / Topping", icon:"🌰", ingredients:["1 bote garbanzos (400g)","1 cda aceite oliva","Sal, pimentón ahumado, ajo en polvo"], steps:["Escurre y seca bien los garbanzos.","Aliña con aceite y especias.","Hornea a 200°C 20-25 min removiendo a mitad."], tip:"Perfectos sobre ensaladas o solos como snack crujiente." },
-  { name:"Overnight Oats (Avena Nocturna)", time:"5 min + 8h reposo", servings:1, kcal:460, protein:25, batch:true, batchNote:"Prepara 3-4 tarros el domingo para Lun-Jue.", category:"Desayuno", icon:"🌙", ingredients:["50g avena","200ml leche de soja","25g proteína de soja","100g yogur soja","1 cda chía","Frutos rojos al gusto"], steps:["Mezcla todos los ingredientes en un tarro con tapa.","Guarda en la nevera toda la noche.","Por la mañana: añade los frutos rojos y come frío."], tip:"Prepara 3-4 tarros el domingo. Aguanta 3-4 días (los frutos rojos ponlos al momento)." },
+
+  // ── DESAYUNO ──
+  { name:"Tu Desayuno Base", time:"3 min (o noche anterior)", servings:1, kcal:380, protein:34, batch:true, batchNote:"Prepara 3-4 tarros el domingo (overnight). O mezcla en el momento con agua caliente.", category:"Desayuno", icon:"🌅",
+    ingredients:["50g avena en copos","25g proteína en polvo (sabor neutro o vainilla)","1 cda semillas de chía","Frutos rojos al gusto (frescos o congelados)","Agua (para mezclar — 150-200ml aprox)"],
+    steps:["Versión rápida: mezcla avena + proteína + chía en un bol. Añade agua poco a poco hasta textura deseada. Añade los frutos rojos encima.","Versión overnight: mezcla todo en un tarro con tapa, mete en nevera. Por la mañana está listo — añade los frutos rojos al momento."],
+    tip:"✅ Está muy bien tal como lo haces. Opcional: añade 15g de almendras o 1 cda de mantequilla de cacahuete para más saciedad (suma ~90 kcal y 4g proteína)." },
+
+  // ── ALMUERZO ──
+  { name:"Bowl de Pollo con Quinoa y Verduras", time:"20 min", servings:1, kcal:540, protein:48, batch:true, batchNote:"Cocina 3 pechugas y 300g quinoa el domingo. Monta el bowl en 2 min cada día.", category:"Almuerzo", icon:"🍗",
+    ingredients:["150g pechuga de pollo","70g quinoa cruda (rinde ~180g cocida)","200g brócoli o judías verdes","1/2 pimiento rojo","1 cda aceite oliva","Sal, ajo en polvo, pimentón dulce"],
+    steps:["Cuece la quinoa 12 min en agua salada.","Asa el pollo a la plancha con ajo y pimentón, 4-5 min por lado.","Saltea el brócoli y pimiento 5 min con aceite.","Monta el bowl: quinoa + pollo + verduras."],
+    tip:"Prepara el pollo y la quinoa en batch el domingo. Los 3 almuerzos de la semana listos en 30 min." },
+
+  { name:"Salmón con Patata y Calabacín", time:"25 min", servings:1, kcal:520, protein:42, batch:false, category:"Almuerzo", icon:"🐟",
+    ingredients:["150g salmón fresco o congelado","200g patata","200g calabacín","1 cda aceite oliva","Limón, eneldo, sal, pimienta negra"],
+    steps:["Cuece la patata en rodajas al microondas 6-8 min o al horno.","Saltea el calabacín en rodajas 4 min con aceite y sal.","Cocina el salmón a la plancha 3-4 min por lado con limón y eneldo.","Sirve junto. Sin salsas pesadas."],
+    tip:"El salmón congelado es igual de nutritivo que el fresco y mucho más barato. Descongela en la nevera la noche anterior." },
+
+  { name:"Ensalada de Atún con Arroz Integral", time:"10 min", servings:1, kcal:490, protein:38, batch:true, batchNote:"Cuece arroz para 3 días el domingo. El resto es montaje.", category:"Almuerzo", icon:"🥗",
+    ingredients:["1 lata atún al natural (80g escurrido)","80g arroz integral crudo (rinde ~200g cocido)","1/2 pepino","1 tomate","1/4 cebolla morada","1 cda aceite oliva","Vinagre de manzana, sal"],
+    steps:["Cuece el arroz según instrucciones (unos 25 min).","Corta pepino, tomate y cebolla en dados pequeños.","Escurre el atún.","Mezcla todo con aceite y vinagre. Listo."],
+    tip:"El vinagre de manzana es más suave que el normal — mejor para el reflujo que el vinagre de vino." },
+
+  { name:"Pollo al Horno con Boniato y Brócoli", time:"35 min (5 activos)", servings:2, kcal:510, protein:46, batch:true, batchNote:"Hornea doble cantidad el domingo. 4 raciones listas para la semana.", category:"Almuerzo", icon:"🍠",
+    ingredients:["300g pechuga de pollo (2 filetes)","400g boniato","300g brócoli","2 cdas aceite oliva","Ajo, romero, sal, pimentón dulce"],
+    steps:["Precalienta horno a 200°C.","Corta boniato en dados, aliña con aceite, ajo y sal.","Coloca pollo y boniato en bandeja. Hornea 20 min.","Añade brócoli los últimos 10 min."],
+    tip:"Todo en una sola bandeja = un solo fregado. El pollo queda jugoso si no lo pasas de cocción." },
+
+  // ── CENA (sin legumbres, ligera, antireflujo) ──
+  { name:"Tortilla de Claras con Verduras", time:"10 min", servings:1, kcal:280, protein:30, batch:false, category:"Cena", icon:"🍳",
+    ingredients:["4 claras de huevo + 1 huevo entero","100g champiñones","1/2 calabacín","1/4 cebolla","1 cda aceite oliva","Sal, orégano"],
+    steps:["Saltea cebolla y champiñones 3 min.","Añade el calabacín rallado o en daditos. 2 min más.","Bate las claras + huevo entero con sal. Vierte encima.","Cuaja a fuego medio-bajo 3-4 min. Dobla y sirve."],
+    tip:"Ligera, alta proteína y nada ácida. Las claras son más fáciles de digerir que el huevo entero para el reflujo." },
+
+  { name:"Tofu a la Plancha con Arroz y Calabacín", time:"15 min", servings:1, kcal:420, protein:28, batch:false, category:"Cena", icon:"🟨",
+    ingredients:["180g tofu firme","80g arroz basmati crudo (o ya cocido)","200g calabacín","1 cda aceite oliva","Sal, cúrcuma, ajo en polvo (sin picante)"],
+    steps:["Cuece el arroz basmati 10-12 min (o usa arroz del batch cook).","Corta tofu en lonchas gruesas. Aliña con cúrcuma y ajo en polvo.","Cocina el tofu a la plancha 3 min por lado.","Saltea el calabacín 4 min. Sirve todo junto."],
+    tip:"El arroz basmati tiene índice glucémico más bajo que el blanco normal — mejor para la digestión nocturna." },
+
+  { name:"Salmón al Vapor con Patata y Zanahoria", time:"20 min", servings:1, kcal:430, protein:38, batch:false, category:"Cena", icon:"🫧",
+    ingredients:["130g salmón","150g patata","150g zanahoria","1 cda aceite oliva","Limón, eneldo, sal (sin pimienta)"],
+    steps:["Cuece patata y zanahoria al vapor o microondas 8-10 min.","Cocina el salmón al vapor o en papel de horno 10-12 min a 180°C.","Aliña con aceite y unas gotas de limón. Sin salsas."],
+    tip:"El vapor es el método de cocción más suave para el reflujo. Evita freír o añadir pimienta negra por la noche." },
+
+  { name:"Pollo Hervido Desmechado con Arroz", time:"25 min", servings:1, kcal:390, protein:44, batch:true, batchNote:"Hierve 3 pechugas el domingo. El pollo desmechado aguanta 4 días en nevera.", category:"Cena", icon:"🫙",
+    ingredients:["150g pechuga de pollo hervida y desmechada","70g arroz basmati crudo","150g zanahoria o judías verdes cocidas","1 cda aceite oliva","Sal, laurel (para hervir el pollo)"],
+    steps:["Hierve el pollo con laurel y sal 20 min. Desmechar con dos tenedores.","Cuece el arroz basmati por separado.","Cuece o vaporiza las verduras.","Monta el plato: arroz + pollo + verduras + un chorrito de aceite."],
+    tip:"El pollo hervido desmechado es una de las proteínas más digestivas que existen — ideal para cenar con reflujo." },
+
+  // ── SNACKS ──
+  { name:"Yogur de Soja con Frutos Secos", time:"1 min", servings:1, kcal:220, protein:12, batch:false, category:"Snack", icon:"🥛",
+    ingredients:["200g yogur de soja natural sin azúcar","20g nueces o almendras","Canela opcional"],
+    steps:["Vierte el yogur en un bol.","Añade los frutos secos encima.","Opcional: una pizca de canela."],
+    tip:"Snack rápido con buen balance proteína + grasa. Mejor antes del entrenamiento que después (si tienes reflujo)." },
+
+  { name:"Huevos Duros", time:"10 min", servings:1, kcal:140, protein:12, batch:true, batchNote:"Hierve 6 huevos el domingo. Aguantan 5 días en nevera con cáscara.", category:"Snack", icon:"🥚",
+    ingredients:["2 huevos","Agua","Sal opcional"],
+    steps:["Pon los huevos en agua fría. Lleva a ebullición.","10 minutos desde que hierve para duro.","Enfría en agua fría. Guarda con cáscara en nevera."],
+    tip:"El snack más práctico y proteico. Pela solo cuando vayas a comer." },
+
+  { name:"Plátano con Mantequilla de Cacahuete", time:"1 min", servings:1, kcal:210, protein:6, batch:false, category:"Snack", icon:"🍌",
+    ingredients:["1 plátano mediano","1 cda mantequilla de cacahuete (100% cacahuete, sin azúcar)"],
+    steps:["Pela el plátano.","Unta o moja en la mantequilla de cacahuete."],
+    tip:"Snack ideal post-entrenamiento: carbohidratos rápidos del plátano + proteína y grasa del cacahuete." },
+
+  { name:"Tosta de Aguacate con Huevo", time:"7 min", servings:1, kcal:320, protein:14, batch:false, category:"Snack", icon:"🥑",
+    ingredients:["1 rebanada pan integral (40g)","1/2 aguacate","1 huevo pochado o a la plancha","Sal, limón"],
+    steps:["Tuesta el pan.","Aplasta el aguacate con sal y unas gotas de limón.","Cocina el huevo pochado (2 min en agua con vinagre) o a la plancha.","Monta: pan + aguacate + huevo."],
+    tip:"Snack más contundente — bueno si el almuerzo fue ligero o hay mucho tiempo hasta la cena." },
+
+  { name:"Proteína en Polvo con Agua o Leche Vegetal", time:"1 min", servings:1, kcal:120, protein:25, batch:false, category:"Snack", icon:"💪",
+    ingredients:["1 scoop (25g) proteína en polvo","200-250ml agua o leche de soja sin azúcar"],
+    steps:["Mezcla en un vaso o shaker.","Agita o remueve bien.","Listo."],
+    tip:"Snack de emergencia cuando no tienes nada preparado. Rápido y cumple con el objetivo de proteína." },
+
+  { name:"Edamame", time:"5 min", servings:1, kcal:160, protein:13, batch:false, category:"Snack", icon:"🫛",
+    ingredients:["150g edamame congelado en vainas","Sal marina en escamas"],
+    steps:["Cuece el edamame congelado 4-5 min en agua salada.","Escurre y espolvorea sal marina.","Come directamente de la vaina."],
+    tip:"Snack con la mejor relación proteína/precio junto a los huevos. Congelado siempre disponible." },
 ];
 
 const weekMeals = {
-  Lun:{ type:"💪 Entreno A", breakfast:"Overnight Oats", lunch:"Bowl de Lentejas y Arroz", snack:"2 huevos duros + manzana", dinner:"Tofu al Horno con Boniato", kcal:1910 },
-  Mar:{ type:"🚶 Caminata", breakfast:"Tortilla de 3 Huevos", lunch:"Garbanzos + Quinoa + Aguacate", snack:"Yogur soja + nueces", dinner:"Tempeh Salteado Rápido", kcal:1890 },
-  Mié:{ type:"💪 Entreno B", breakfast:"Smoothie Proteico", lunch:"Pechuga pollo 150g + lentejas", snack:"2 huevos + pera", dinner:"Bowl de Lentejas y Arroz", kcal:1920 },
-  Jue:{ type:"🚶 Caminata", breakfast:"Overnight Oats", lunch:"Atún + Hummus + Pan integral", snack:"Tofu marinado + zanahoria", dinner:"Chili Vegetal", kcal:1880 },
-  Vie:{ type:"💪 Entreno C", breakfast:"Tostada + Aguacate + 2 huevos", lunch:"Tempeh + Arroz + Brócoli", snack:"Yogur soja + pistachos", dinner:"Salmón + Boniato + Espárragos", kcal:1930 },
-  Sáb:{ type:"🚶 Caminata", breakfast:"Smoothie Proteico", lunch:"Garbanzos Asados + Quinoa + Kale", snack:"Edamame", dinner:"Tofu al Horno con Boniato", kcal:1870 },
-  Dom:{ type:"😴 Descanso", breakfast:"Tortilla de 3 Huevos", lunch:"Pollo + Cuscús + Verdura", snack:"Yogur soja + almendras", dinner:"Pasta lentejas + Tofu desmenuzado", kcal:1900 },
+  Lun:{ type:"💪 Entreno A", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Bowl de Pollo con Quinoa y Verduras", snack:"2 Huevos duros + plátano", dinner:"Tortilla de Claras con Verduras", kcal:1900 },
+  Mar:{ type:"🚶 Caminata", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Ensalada de Atún con Arroz Integral", snack:"Yogur de Soja con Frutos Secos", dinner:"Tofu a la Plancha con Arroz y Calabacín", kcal:1880 },
+  Mié:{ type:"💪 Entreno B", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Salmón con Patata y Calabacín", snack:"Proteína en polvo + plátano con cacahuete", dinner:"Pollo Hervido Desmechado con Arroz", kcal:1910 },
+  Jue:{ type:"🚶 Caminata", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Bowl de Pollo con Quinoa y Verduras", snack:"Edamame + huevo duro", dinner:"Salmón al Vapor con Patata y Zanahoria", kcal:1870 },
+  Vie:{ type:"💪 Entreno C", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Pollo al Horno con Boniato y Brócoli", snack:"Tosta de Aguacate con Huevo", dinner:"Tortilla de Claras con Verduras", kcal:1920 },
+  Sáb:{ type:"🚶 Caminata", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Ensalada de Atún con Arroz Integral", snack:"Yogur de Soja con Frutos Secos", dinner:"Tofu a la Plancha con Arroz y Calabacín", kcal:1880 },
+  Dom:{ type:"😴 Descanso", breakfast:"Avena + Proteína + Chía + Frutos rojos", lunch:"Pollo al Horno con Boniato y Brócoli", snack:"Plátano con Mantequilla de Cacahuete", dinner:"Pollo Hervido Desmechado con Arroz", kcal:1890 },
 };
 
 const safetyRules = [
@@ -256,6 +327,36 @@ const safetyRules = [
   { icon:"💨", rule:"Exhala en el esfuerzo (buena práctica)", detail:"Ya no es crítico por la cirugía, pero sigue siendo la técnica correcta de respiración." },
 ];
 
+// ── STORAGE ───────────────────────────────────────────
+function getWeekKey() {
+  const now = new Date();
+  const jan1 = new Date(now.getFullYear(), 0, 1);
+  const week = Math.ceil(((now - jan1) / 86400000 + jan1.getDay() + 1) / 7);
+  return now.getFullYear() + '-W' + week;
+}
+function saveState() {
+  try {
+    localStorage.setItem('fitness_v1', JSON.stringify({
+      weekKey: getWeekKey(),
+      checkedDays,
+      totalSessions
+    }));
+  } catch(e) {}
+}
+function initState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('fitness_v1') || 'null');
+    if (saved && saved.weekKey === getWeekKey()) {
+      checkedDays = saved.checkedDays || {};
+      totalSessions = saved.totalSessions || 0;
+    } else {
+      checkedDays = {};
+      totalSessions = saved ? (saved.totalSessions || 0) : 0;
+      saveState();
+    }
+  } catch(e) { checkedDays = {}; totalSessions = 0; }
+}
+
 // ── STATE ─────────────────────────────────────────────
 let currentTab = 'training';
 let currentDay = 'A';
@@ -264,6 +365,7 @@ let expandedRec = null;
 let recFilter = 'Todos';
 let currentWeekDay = 'Lun';
 let checkedDays = {};
+let totalSessions = 0;
 
 // ── RENDER ────────────────────────────────────────────
 function showTab(t) {
@@ -287,7 +389,7 @@ function renderAll() {
 function updateProgress() {
   const count = Object.values(checkedDays).filter(Boolean).length;
   document.getElementById('progressFill').style.width = (count/3*100)+'%';
-  document.getElementById('progressLabel').textContent = count+'/3 sesiones esta semana';
+  document.getElementById('progressLabel').textContent = count+'/3 esta semana · '+totalSessions+' sesiones totales';
 }
 
 // ── TRAINING TAB ──────────────────────────────────────
@@ -348,7 +450,15 @@ function renderTraining() {
 }
 
 function setDay(d) { currentDay = d; expandedEx = null; renderTraining(); }
-function toggleDay(d) { checkedDays[d] = !checkedDays[d]; renderTraining(); updateProgress(); }
+function toggleDay(d) {
+  const wasDone = checkedDays[d];
+  checkedDays[d] = !wasDone;
+  if (!wasDone) totalSessions++;
+  else if (totalSessions > 0) totalSessions--;
+  saveState();
+  renderTraining();
+  updateProgress();
+}
 function toggleEx(k) { expandedEx = expandedEx===k ? null : k; renderTraining(); }
 
 // ── DIET TAB ──────────────────────────────────────────
@@ -450,7 +560,7 @@ function renderWeekly() {
 
   html += `<div class="box box-blue">
     <div class="box-title" style="color:var(--info)">📦 BATCH COOK DEL DOMINGO</div>
-    <div class="box-text" style="color:#8ab4d0">• Chili Vegetal (4 porciones → congela)<br>• Bowl Lentejas+Arroz (4 porciones)<br>• Garbanzos Asados (3 porciones)<br>• Overnight Oats (3-4 tarros)<br>• Tofu marinado ya cortado</div>
+    <div class="box-text" style="color:#8ab4d0">• 3 pechugas de pollo asadas o hervidas<br>• 300g quinoa cocida<br>• Arroz basmati para 3-4 días<br>• 6 huevos duros (snacks semana)<br>• Pollo desmechado hervido (cenas)<br>• Avena preparada en tarros (3-4 overnight)</div>
   </div></div>`;
 
   document.getElementById('tab-weekly').innerHTML = html;
@@ -496,6 +606,7 @@ function renderSafety() {
 }
 
 // ── INIT ──────────────────────────────────────────────
+initState();
 renderAll();
 </script>
 </body>
