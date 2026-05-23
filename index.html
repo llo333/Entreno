@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Programa">
+<title>Mi Programa Fitness</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0f0f0f; --surface: #1a1a1a; --card: #222; --border: #2e2e2e;
+    --accent: #c8f55a; --text: #f0f0f0; --muted: #888;
+    --danger: #ff5a5a; --info: #5ac8fa; --warn: #ffb347;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', sans-serif; max-width: 480px; margin: 0 auto; padding-bottom: 80px; min-height: 100vh; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* HEADER */
+  .header { padding: 52px 18px 16px; background: linear-gradient(160deg, #1a1a1a 0%, var(--bg) 100%); border-bottom: 1px solid var(--border); }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .header-label { font-size: 10px; letter-spacing: 3px; color: var(--accent); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+  .header-title { font-size: 22px; font-weight: 800; line-height: 1.15; }
+  .header-badge { background: var(--accent); color: #000; border-radius: 12px; padding: 6px 13px; font-size: 12px; font-weight: 700; }
+  .header-sub { font-size: 11px; color: var(--muted); margin-top: 5px; text-align: right; }
+  .progress-bar-bg { margin-top: 14px; background: var(--border); border-radius: 8px; height: 6px; }
+  .progress-bar-fill { background: var(--accent); height: 6px; border-radius: 8px; transition: width 0.4s; }
+  .progress-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #111; border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .nav-btn { flex: 1; background: none; border: none; padding: 13px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 400; color: var(--muted); letter-spacing: 0.3px; }
+  .nav-label.active { color: var(--accent); font-weight: 700; }
+
+  /* TABS */
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--card); border-radius: 14px; margin-bottom: 8px; border: 1px solid var(--border); overflow: hidden; }
+  .card.expanded { border-color: rgba(200,245,90,0.4); }
+  .card-header { width: 100%; background: none; border: none; padding: 13px; display: flex; align-items: center; gap: 11px; text-align: left; }
+  .card-icon { width: 38px; height: 38px; border-radius: 10px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .card-icon.expanded { background: rgba(200,245,90,0.15); }
+  .card-meta { flex: 1; min-width: 0; }
+  .card-name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .card-right { text-align: right; flex-shrink: 0; }
+  .card-sets { font-size: 13px; font-weight: 700; color: var(--accent); }
+  .card-rest { font-size: 11px; color: var(--muted); }
+  .card-body { padding: 0 13px 13px; border-top: 1px solid var(--border); }
+  .card-desc { font-size: 13px; color: #ccc; line-height: 1.6; margin-top: 10px; }
+  .tips-title { font-size: 10px; color: var(--accent); font-weight: 700; margin: 10px 0 6px; letter-spacing: 1px; text-transform: uppercase; }
+  .tip-item { display: flex; gap: 8px; margin-bottom: 5px; align-items: flex-start; }
+  .tip-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 6px; flex-shrink: 0; }
+  .tip-text { font-size: 12px; color: #bbb; line-height: 1.5; }
+  .yt-hint { margin-top: 11px; background: var(--surface); border-radius: 8px; padding: 7px 11px; font-size: 11px; }
+
+  /* SECTION BOXES */
+  .box { border-radius: 12px; padding: 13px; margin-bottom: 8px; }
+  .box-green { background: #1a2a1a; border: 1px solid #3a5a3a; }
+  .box-blue { background: #1a1e2a; border: 1px solid #2a3a5a; }
+  .box-red { background: #2a1a1a; border: 1px solid #5a2a2a; }
+  .box-dark { background: var(--surface); border: 1px solid var(--border); }
+  .box-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+  .box-text { font-size: 12px; line-height: 1.7; }
+
+  /* DAY SELECTOR */
+  .day-selector { display: flex; gap: 8px; padding: 16px 16px 0; }
+  .day-btn { flex: 1; padding: 10px 0; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); color: var(--muted); font-weight: 700; font-size: 14px; }
+  .day-btn.active-a { border-color: var(--accent); background: rgba(200,245,90,0.1); color: var(--accent); }
+  .day-btn.active-b { border-color: var(--info); background: rgba(90,200,250,0.1); color: var(--info); }
+  .day-btn.active-c { border-color: var(--warn); background: rgba(255,179,71,0.1); color: var(--warn); }
+
+  /* DAY HEADER */
+  .day-header { margin: 10px 16px 0; background: var(--surface); border-radius: 16px; padding: 14px; }
+  .day-header-a { border-left: 4px solid var(--accent); }
+  .day-header-b { border-left: 4px solid var(--info); }
+  .day-header-c { border-left: 4px solid var(--warn); }
+  .day-header-inner { display: flex; justify-content: space-between; align-items: center; }
+  .day-title { font-weight: 800; font-size: 15px; }
+  .day-sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .mark-btn { border: none; border-radius: 10px; padding: 7px 13px; font-weight: 700; font-size: 12px; }
+  .mark-btn.done-a { background: var(--accent); color: #000; }
+  .mark-btn.done-b { background: var(--info); color: #000; }
+  .mark-btn.done-c { background: var(--warn); color: #000; }
+  .mark-btn.undone { background: var(--border); color: var(--muted); }
+
+  /* MACRO GRID */
+  .macro-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .macro-cell { background: var(--card); border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .macro-val { font-size: 14px; font-weight: 800; }
+  .macro-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* FILTER */
+  .filter-scroll { overflow-x: auto; padding: 12px 16px 0; }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+  .filter-inner { display: flex; gap: 8px; width: max-content; }
+  .filter-btn { padding: 7px 13px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .filter-btn.active { border-color: var(--accent); background: rgba(200,245,90,0.1); color: var(--accent); }
+
+  /* RECIPE BADGE */
+  .batch-badge { font-size: 10px; background: rgba(90,200,250,0.15); color: var(--info); border-radius: 6px; padding: 2px 6px; font-weight: 700; }
+
+  /* WEEKLY */
+  .week-scroll { overflow-x: auto; padding: 16px 16px 0; }
+  .week-scroll::-webkit-scrollbar { display: none; }
+  .week-inner { display: flex; gap: 6px; width: max-content; }
+  .week-btn { width: 50px; padding: 10px 0; border-radius: 12px; border: 2px solid var(--border); background: var(--surface); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .week-btn.active { border-color: var(--accent); background: rgba(200,245,90,0.1); }
+  .week-day { font-size: 10px; font-weight: 700; color: var(--muted); }
+  .week-day.active { color: var(--accent); }
+  .week-type { font-size: 9px; color: var(--muted); }
+  .meal-card { background: var(--card); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 11px; border: 1px solid var(--border); }
+
+  /* SAFETY */
+  .safety-rule { background: var(--card); border-radius: 12px; padding: 12px 13px; margin-bottom: 8px; border: 1px solid var(--border); display: flex; gap: 11px; align-items: flex-start; }
+  .rule-icon { font-size: 19px; flex-shrink: 0; }
+  .rule-title { font-size: 13px; font-weight: 700; }
+  .rule-detail { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+
+  /* BREATH GRID */
+  .breath-grid { display: flex; gap: 8px; margin-bottom: 8px; }
+  .breath-cell { flex: 1; border-radius: 10px; padding: 10px; text-align: center; }
+  .breath-icon { font-size: 18px; margin-bottom: 4px; }
+  .breath-label { font-size: 11px; font-weight: 700; }
+  .breath-action { font-size: 12px; margin-top: 2px; }
+
+  /* PROGRESS MILESTONES */
+  .milestone { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+  .milestone-badge { border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+
+  /* FORBIDDEN */
+  .forbidden-item { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+  .forbidden-icon { font-size: 13px; }
+  .forbidden-name { font-size: 12px; font-weight: 600; color: #e08080; }
+  .forbidden-reason { font-size: 11px; color: var(--muted); }
+
+  .pad { padding: 10px 16px 0; }
+  .kcal-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div>
+      <div class="header-label">Plan Personal</div>
+      <div class="header-title">Tu Programa<br><span style="color:var(--accent)">de Recuperación</span></div>
+    </div>
+    <div>
+      <div class="header-badge">44 años · 88kg</div>
+      <div class="header-sub">Objetivo: −8kg · 16 semanas</div>
+    </div>
+  </div>
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <div class="progress-label" id="progressLabel">0/3 sesiones esta semana</div>
+</div>
+
+<!-- TABS -->
+<div id="tab-training" class="tab active"></div>
+<div id="tab-diet" class="tab"></div>
+<div id="tab-weekly" class="tab"></div>
+<div id="tab-safety" class="tab"></div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn" onclick="showTab('training')">
+    <span class="nav-icon">💪</span>
+    <span class="nav-label active" id="nav-training">Entreno</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('diet')">
+    <span class="nav-icon">🥗</span>
+    <span class="nav-label" id="nav-diet">Dieta</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('weekly')">
+    <span class="nav-icon">📅</span>
+    <span class="nav-label" id="nav-weekly">Semana</span>
+  </button>
+  <button class="nav-btn" onclick="showTab('safety')">
+    <span class="nav-icon">🛡️</span>
+    <span class="nav-label" id="nav-safety">Seguridad</span>
+  </button>
+</nav>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const exercises = {
+  A: [
+    { name:"Goblet Squat", sets:"4×8-10", rest:"90s", muscle:"Cuádriceps / Core", icon:"🏋️", desc:"Sostén el KB de 20kg al pecho. Torso erguido, exhala al subir. RPE 8-9 es válido con buena técnica.", tips:["Espalda neutra en todo momento","Talones en el suelo siempre","No pases la rodilla de la punta del pie","RPE 8-9 es perfectamente válido"], video:"Goblet Squat" },
+    { name:"Flexiones (Push-ups)", sets:"3×8-12", rest:"75s", muscle:"Pecho / Tríceps", icon:"💪", desc:"Manos a anchura de hombros. Eleva los pies en el banco para mayor intensidad. Puedes ir cerca del fallo técnico.", tips:["Cuerpo recto de cabeza a talones","Codos a 45° del cuerpo","Pecho toca el suelo sin rebotar","Eleva pies para aumentar dificultad"], video:"Push-ups" },
+    { name:"Press Militar (mancuernas de pie)", sets:"3×8-10", rest:"90s", muscle:"Hombros / Tríceps", icon:"🎯", desc:"Con 10 años de recuperación puedes hacer el press de pie. Core activo, no hiperextiendas la lumbar.", tips:["Core apretado para proteger la lumbar","No bloquees los codos arriba","Movimiento controlado 2s/2s","De pie permite más peso que sentado"], video:"Overhead Press Standing" },
+    { name:"Zancada Estática (Split Squat)", sets:"3×8/pierna", rest:"75s", muscle:"Cuádriceps / Glúteos", icon:"🦵", desc:"Tronco vertical. Rodilla trasera baja sin tocar el suelo. Carga progresivamente.", tips:["Tronco perpendicular al suelo","Rodilla delantera NO supera el pie","Baja lento (3 segundos)","Aumenta peso cuando llegues a 10 reps limpias"], video:"Split Squat" },
+    { name:"Pallof Press (banda)", sets:"3×10/lado", rest:"45s", muscle:"Core antirrotación", icon:"🛡️", desc:"ANTIRROTACIÓN: ancla la banda al pecho. Extiende los brazos y RESISTE. Sin rotación con carga (restricción permanente).", tips:["El objetivo es NO rotar","Pausa 2s con brazos extendidos","Pies a anchura de hombros","Usa banda más resistente para progresar"], video:"Pallof Press" },
+    { name:"Dead Bug", sets:"3×10/lado", rest:"45s", muscle:"Core profundo", icon:"🐛", desc:"Lumbar PEGADA al suelo. Extiende brazo contrario a pierna contraria. Excelente para el core sin rotación.", tips:["Lumbar en contacto con suelo siempre","Movimiento lento y controlado","Exhala al extender extremidades","Añade banda en pies para progresar"], video:"Dead Bug" },
+    { name:"Plank Frontal", sets:"3×45-60s", rest:"45s", muscle:"Core global", icon:"⚡", desc:"Sobre antebrazos o manos extendidas. Glúteos apretados, costillas hacia abajo. Puedes añadir peso en la espalda.", tips:["Cuerpo recto como tabla","Glúteos y abdomen activos","Progresa a plank con brazos extendidos","Añade disco en la espalda para progresar"], video:"Plank" },
+  ],
+  B: [
+    { name:"Peso Muerto Convencional (KB 20kg)", sets:"4×6-8", rest:"90s", muscle:"Cadena posterior completa", icon:"🔩", desc:"Con 10 años de recuperación el peso muerto convencional es perfectamente viable. Columna neutra, empuja el suelo con los pies.", tips:["KB pegada a las piernas en todo momento","Columna neutra: ni redonda ni hiperextendida","Empuja el suelo, no tires del peso","Exhala en el tirón, inhala al bajar"], video:"Kettlebell Deadlift" },
+    { name:"Dominadas (o asistidas con banda)", sets:"4×6-10", rest:"90s", muscle:"Dorsales / Bíceps", icon:"🏔️", desc:"Agarre prono a anchura de hombros. Sin balanceo. Objetivo: progresar hacia dominadas lastradas.", tips:["Sin kipping ni balanceo","Exhala al subir","Baja lento (3 segundos)","Con 10 limpias, añade peso con mancuerna entre pies"], video:"Pull-ups" },
+    { name:"Remo 1 Brazo (mancuerna)", sets:"4×10/lado", rest:"75s", muscle:"Dorsal / Romboides", icon:"🚣", desc:"Apoya mano y rodilla en el banco. Carga progresivamente. Recuperación completa = más peso con seguridad.", tips:["Codo cerca del cuerpo al subir","Hombro no se levanta al tirar","Pausa 1s arriba con el codo","Aumenta peso al llegar a 10 reps limpias"], video:"One Arm Row" },
+    { name:"Hip Thrust con Mancuerna", sets:"3×10-12", rest:"75s", muscle:"Glúteos / Isquios", icon:"🍑", desc:"Hombros apoyados en banco. KB o mancuerna en las caderas. Caderas neutras arriba — sin hiperextensión (restricción permanente).", tips:["Caderas NEUTRAS en la cima","Aprieta glúteos fuerte arriba","Progresa aumentando el peso","Barbilla al pecho para proteger cervicales"], video:"Hip Thrust" },
+    { name:"Bird-Dog", sets:"3×10/lado", rest:"45s", muscle:"Estabilizadores lumbares", icon:"🦅", desc:"A cuatro patas. Extiende brazo derecho + pierna izquierda simultáneamente. Pelvis nivelada.", tips:["Pelvis neutra: no se inclina","Extiende lento y vuelve lento","Pausa 2s en extensión","Añade tobilleras con peso para progresar"], video:"Bird Dog" },
+    { name:"Side Plank (plank lateral)", sets:"3×40-60s/lado", rest:"45s", muscle:"Oblicuos / Core lateral", icon:"📐", desc:"Sobre el antebrazo o mano extendida. Línea recta hombro-cadera-pie.", tips:["Caderas no caen al suelo","Versión avanzada: mano extendida","Añade elevación de cadera para progresar","Respira con normalidad"], video:"Side Plank" },
+    { name:"RDL con Kettlebell 20kg", sets:"3×10-12", rest:"75s", muscle:"Cadena posterior / Glúteos", icon:"🦵", desc:"Bisagra de cadera con columna neutra. Complemento de volumen al peso muerto convencional.", tips:["Bisagra de cadera, NO sentadilla","Columna neutra siempre","KB pegada a las piernas bajando","Más repeticiones y menos peso que el peso muerto"], video:"Romanian Deadlift" },
+  ],
+  C: [
+    { name:"Goblet Squat Tempo 3-1-1", sets:"3×8", rest:"75s", muscle:"Cuádriceps / Core", icon:"⏱️", desc:"3 segundos bajando, 1s pausa abajo, 1s subida. Más difícil sin añadir peso.", tips:["3 segundos BAJANDO","1 segundo en posición baja","1 segundo subiendo","Peso igual o ligeramente menor"], video:"Goblet Squat Tempo" },
+    { name:"Fondos en Paralelas", sets:"3×8-12", rest:"75s", muscle:"Pecho / Tríceps / Hombros", icon:"🔱", desc:"Con la recuperación completa puedes hacer fondos sin asistencia. Objetivo: progresar a fondos lastrados.", tips:["Torso inclinado = más pecho, vertical = más tríceps","Baja hasta 90° de codo mínimo","Con 12 limpias, añade peso con mancuerna","Exhala al subir"], video:"Dips" },
+    { name:"KB Swing 20kg 🔥", sets:"4×12-15", rest:"60s", muscle:"Cadena posterior / Glúteos / Cardio", icon:"🔥", desc:"¡Desbloqueado! Con 10 años de recuperación el swing con 20kg es perfectamente viable. Potencia de cadera explosiva.", tips:["La fuerza viene de la cadera, no de los brazos","Bisagra de cadera explosiva en cada rep","KB hasta altura de hombros (versión rusa)","Exhala en cada swing hacia arriba"], video:"Kettlebell Swing" },
+    { name:"Press Inclinado (mancuernas)", sets:"3×10", rest:"60s", muscle:"Pecho alto / Hombros", icon:"📈", desc:"Banco abdominal a 30-45°. Progresa en peso al llegar a 10 reps limpias.", tips:["Ángulo 30-45°","Espalda apoyada en banco","Exhala al empujar","No rebotes en la bajada"], video:"Incline Press" },
+    { name:"RDL a 1 Pierna (mancuerna)", sets:"3×8/pierna", rest:"60s", muscle:"Glúteos / Isquios / Equilibrio", icon:"🦩", desc:"Bisagra de cadera unilateral. Empieza con 8kg y progresa. Corrige desequilibrios entre piernas.", tips:["Columna neutra siempre","Mira un punto fijo en el suelo","Progresa de 8kg cuando domines el equilibrio","La pierna libre no toca el suelo hasta terminar"], video:"Single Leg RDL" },
+  ]
+};
+
+const forbidden = [
+  { name:"Rotación con carga (Russian Twist, woodchop)", reason:"Indicación médica permanente — independiente de la hernia", icon:"🚫" },
+  { name:"Hiperextensión lumbar", reason:"Indicación médica permanente", icon:"🚫" },
+  { name:"Crunch / Sit-up clásico", reason:"Sin beneficio real vs. dead bug o plank", icon:"⚠️" },
+  { name:"V-ups / Leg raises colgado", reason:"Alta demanda de flexión espinal sin beneficio añadido", icon:"⚠️" },
+];
+
+const recipes = [
+  { name:"Bowl de Lentejas y Arroz", time:"20 min", servings:1, kcal:520, protein:28, batch:true, batchNote:"Prepara 4 porciones el domingo. Aguanta 4 días en frío.", category:"Almuerzo / Cena", icon:"🫘", ingredients:["200g lentejas cocidas (bote)","50g arroz integral cocido","200g espinacas frescas","1 diente ajo","1 cda aceite oliva","Comino, sal, pimiento"], steps:["Saltea el ajo en el aceite 1 min.","Añade las espinacas y saltea 2 min.","Incorpora las lentejas y el arroz.","Añade comino y sal. Listo."], tip:"Multiplica por 4 el domingo. Guarda en 4 tupers." },
+  { name:"Tortilla de 3 Huevos con Judías", time:"10 min", servings:1, kcal:420, protein:35, batch:false, category:"Desayuno / Cena", icon:"🍳", ingredients:["3 huevos","80g judías blancas en bote","1/4 cebolla","Sal, aceite de oliva"], steps:["Pica la cebolla y sofríe 3 min.","Añade las judías escurridas y calienta 2 min.","Bate los huevos, vierte encima, cuaja 3-4 min."], tip:"Comida de rescate en menos de 10 min. Alta proteína." },
+  { name:"Tofu al Horno con Boniato", time:"35 min", servings:2, kcal:530, protein:32, batch:true, batchNote:"Prepara 4 porciones. Hornea todo junto.", category:"Cena", icon:"🧊", ingredients:["400g tofu firme","400g boniato","2 cdas salsa soja","1 cda aceite sésamo","Ajo en polvo, cúrcuma, pimiento"], steps:["Precalienta horno a 200°C.","Corta tofu en cubos, marina 5 min en soja+aceite.","Corta boniato en dados, aliña con aceite y cúrcuma.","Hornea 25-30 min, da la vuelta a mitad."], tip:"Prepara 800g tofu + 800g boniato y tienes 4 cenas." },
+  { name:"Smoothie Proteico de Mañana", time:"3 min", servings:1, kcal:450, protein:42, batch:false, category:"Desayuno", icon:"🥤", ingredients:["300ml leche de soja sin azúcar","30g proteína de soja en polvo","1 plátano maduro","20g avena","1 cda mantequilla de cacahuete"], steps:["Mete todo en la batidora.","Bate 30 segundos.","Listo."], tip:"Congela el plátano pelado. Más frío y cremoso." },
+  { name:"Chili Vegetal Batch Cook", time:"40 min", servings:4, kcal:480, protein:26, batch:true, batchNote:"Prepara la olla entera. Congela en 4 porciones.", category:"Almuerzo / Cena", icon:"🌶️", ingredients:["1 bote alubias rojas (400g)","200g lentejas cocidas","400g tomate triturado","1 cebolla, 1 pimiento rojo","2 dientes ajo","Comino, pimentón, chile, sal"], steps:["Sofríe cebolla, ajo y pimiento 5 min.","Añade tomate y especias. Cocina 10 min.","Incorpora alubias y lentejas. 20 min a fuego lento.","Ajusta sal. Congela en porciones."], tip:"Con arroz integral es comida completa. Sin arroz, cena ligera." },
+  { name:"Tempeh Salteado Rápido", time:"15 min", servings:1, kcal:490, protein:34, batch:false, category:"Cena", icon:"🫕", ingredients:["150g tempeh","300g verdura wok (pimiento, calabacín, cebolla)","2 cdas salsa soja","1 cda aceite oliva","Ajo, jengibre rallado"], steps:["Corta tempeh en dados, sofríe 5 min hasta dorar.","Añade verduras y sofríe 5 min a fuego alto.","Incorpora salsa soja y jengibre. 2 min más."], tip:"El tempeh aguanta cortado 3 días en frío." },
+  { name:"Garbanzos Asados", time:"30 min (5 activos)", servings:3, kcal:220, protein:11, batch:true, batchNote:"Prepara 2 botes a la vez. Aguantan 5 días hermético.", category:"Snack / Topping", icon:"🌰", ingredients:["1 bote garbanzos (400g)","1 cda aceite oliva","Sal, pimentón ahumado, ajo en polvo"], steps:["Escurre y seca bien los garbanzos.","Aliña con aceite y especias.","Hornea a 200°C 20-25 min removiendo a mitad."], tip:"Perfectos sobre ensaladas o solos como snack crujiente." },
+  { name:"Overnight Oats (Avena Nocturna)", time:"5 min + 8h reposo", servings:1, kcal:460, protein:25, batch:true, batchNote:"Prepara 3-4 tarros el domingo para Lun-Jue.", category:"Desayuno", icon:"🌙", ingredients:["50g avena","200ml leche de soja","25g proteína de soja","100g yogur soja","1 cda chía","Frutos rojos al gusto"], steps:["Mezcla todos los ingredientes en un tarro con tapa.","Guarda en la nevera toda la noche.","Por la mañana: añade los frutos rojos y come frío."], tip:"Prepara 3-4 tarros el domingo. Aguanta 3-4 días (los frutos rojos ponlos al momento)." },
+];
+
+const weekMeals = {
+  Lun:{ type:"💪 Entreno A", breakfast:"Overnight Oats", lunch:"Bowl de Lentejas y Arroz", snack:"2 huevos duros + manzana", dinner:"Tofu al Horno con Boniato", kcal:1910 },
+  Mar:{ type:"🚶 Caminata", breakfast:"Tortilla de 3 Huevos", lunch:"Garbanzos + Quinoa + Aguacate", snack:"Yogur soja + nueces", dinner:"Tempeh Salteado Rápido", kcal:1890 },
+  Mié:{ type:"💪 Entreno B", breakfast:"Smoothie Proteico", lunch:"Pechuga pollo 150g + lentejas", snack:"2 huevos + pera", dinner:"Bowl de Lentejas y Arroz", kcal:1920 },
+  Jue:{ type:"🚶 Caminata", breakfast:"Overnight Oats", lunch:"Atún + Hummus + Pan integral", snack:"Tofu marinado + zanahoria", dinner:"Chili Vegetal", kcal:1880 },
+  Vie:{ type:"💪 Entreno C", breakfast:"Tostada + Aguacate + 2 huevos", lunch:"Tempeh + Arroz + Brócoli", snack:"Yogur soja + pistachos", dinner:"Salmón + Boniato + Espárragos", kcal:1930 },
+  Sáb:{ type:"🚶 Caminata", breakfast:"Smoothie Proteico", lunch:"Garbanzos Asados + Quinoa + Kale", snack:"Edamame", dinner:"Tofu al Horno con Boniato", kcal:1870 },
+  Dom:{ type:"😴 Descanso", breakfast:"Tortilla de 3 Huevos", lunch:"Pollo + Cuscús + Verdura", snack:"Yogur soja + almendras", dinner:"Pasta lentejas + Tofu desmenuzado", kcal:1900 },
+};
+
+const safetyRules = [
+  { icon:"🚫", rule:"Cero rotación con carga", detail:"Russian twist, woodchop pesado — indicación médica permanente" },
+  { icon:"🚫", rule:"Cero hiperextensión lumbar", detail:"Mantener siempre columna neutra — indicación médica permanente" },
+  { icon:"✅", rule:"KB Swing 20kg: desbloqueado", detail:"10 años de recuperación = zona totalmente consolidada. Viable con buena técnica de bisagra." },
+  { icon:"✅", rule:"Peso muerto convencional: viable", detail:"Sin restricción quirúrgica. Columna neutra y técnica correcta son la única consideración." },
+  { icon:"📊", rule:"RPE hasta 8-9 en compuestos", detail:"Ya no es necesario limitarse al RPE 7-8. La limitación ahora es la readaptación al esfuerzo." },
+  { icon:"💨", rule:"Exhala en el esfuerzo (buena práctica)", detail:"Ya no es crítico por la cirugía, pero sigue siendo la técnica correcta de respiración." },
+];
+
+// ── STATE ─────────────────────────────────────────────
+let currentTab = 'training';
+let currentDay = 'A';
+let expandedEx = null;
+let expandedRec = null;
+let recFilter = 'Todos';
+let currentWeekDay = 'Lun';
+let checkedDays = {};
+
+// ── RENDER ────────────────────────────────────────────
+function showTab(t) {
+  currentTab = t;
+  ['training','diet','weekly','safety'].forEach(id => {
+    document.getElementById('tab-'+id).classList.toggle('active', id === t);
+    const lbl = document.getElementById('nav-'+id);
+    if(lbl) lbl.classList.toggle('active', id === t);
+  });
+  renderAll();
+}
+
+function renderAll() {
+  if(currentTab === 'training') renderTraining();
+  if(currentTab === 'diet') renderDiet();
+  if(currentTab === 'weekly') renderWeekly();
+  if(currentTab === 'safety') renderSafety();
+  updateProgress();
+}
+
+function updateProgress() {
+  const count = Object.values(checkedDays).filter(Boolean).length;
+  document.getElementById('progressFill').style.width = (count/3*100)+'%';
+  document.getElementById('progressLabel').textContent = count+'/3 sesiones esta semana';
+}
+
+// ── TRAINING TAB ──────────────────────────────────────
+function renderTraining() {
+  const colors = { A:'var(--accent)', B:'var(--info)', C:'var(--warn)' };
+  const labels = { A:'Día A — Lunes', B:'Día B — Miércoles', C:'Día C — Viernes' };
+  const subs = { A:'Empuje + Cuádriceps · ~60 min', B:'Tracción + Cadena posterior · ~60 min', C:'Circuito metabólico · ~60 min' };
+  const c = colors[currentDay];
+
+  let html = `<div class="day-selector">`;
+  ['A','B','C'].forEach(d => {
+    const cls = currentDay===d ? `day-btn active-${d.toLowerCase()}` : 'day-btn';
+    html += `<button class="${cls}" onclick="setDay('${d}')">Día ${d}</button>`;
+  });
+  html += `</div>`;
+
+  const isDone = checkedDays[currentDay];
+  const doneCls = isDone ? `done-${currentDay.toLowerCase()}` : 'undone';
+  const doneText = isDone ? '✓ Hecho' : 'Marcar';
+  html += `<div class="day-header day-header-${currentDay.toLowerCase()}">
+    <div class="day-header-inner">
+      <div><div class="day-title">${labels[currentDay]}</div><div class="day-sub">${subs[currentDay]}</div></div>
+      <button class="mark-btn ${doneCls}" onclick="toggleDay('${currentDay}')">${doneText}</button>
+    </div>
+  </div>`;
+
+  html += `<div class="pad"><div class="box box-green">
+    <div class="box-title" style="color:#7ecf7e">🔥 CALENTAMIENTO (8 min)</div>
+    <div class="box-text" style="color:#a0d0a0">Respiración 90/90 (2 min) → Cat-Camel ×8 → Glute Bridge ×12 → Dead Bug ×6/lado → Band pull-aparts ×15</div>
+  </div>`;
+
+  exercises[currentDay].forEach((ex, i) => {
+    const key = currentDay+'-'+i;
+    const open = expandedEx === key;
+    html += `<div class="card ${open?'expanded':''}">
+      <button class="card-header" onclick="toggleEx('${key}')">
+        <div class="card-icon ${open?'expanded':''}">${ex.icon}</div>
+        <div class="card-meta"><div class="card-name">${ex.name}</div><div class="card-sub">${ex.muscle}</div></div>
+        <div class="card-right"><div class="card-sets">${ex.sets}</div><div class="card-rest">🕐 ${ex.rest}</div></div>
+      </button>`;
+    if(open) {
+      html += `<div class="card-body">
+        <div class="card-desc">${ex.desc}</div>
+        <div class="tips-title">Puntos clave</div>
+        ${ex.tips.map(t=>`<div class="tip-item"><div class="tip-dot"></div><div class="tip-text">${t}</div></div>`).join('')}
+        <div class="yt-hint"><span style="color:var(--muted)">🔍 Busca en YouTube: </span><span style="color:var(--info);font-weight:600">${ex.video}</span></div>
+      </div>`;
+    }
+    html += `</div>`;
+  });
+
+  html += `<div class="box box-red" style="margin-top:4px">
+    <div class="box-title" style="color:var(--danger)">❌ EJERCICIOS A EVITAR</div>
+    ${forbidden.map(f=>`<div class="forbidden-item"><span class="forbidden-icon">${f.icon}</span><div><div class="forbidden-name">${f.name}</div><div class="forbidden-reason">${f.reason}</div></div></div>`).join('')}
+  </div></div>`;
+
+  document.getElementById('tab-training').innerHTML = html;
+}
+
+function setDay(d) { currentDay = d; expandedEx = null; renderTraining(); }
+function toggleDay(d) { checkedDays[d] = !checkedDays[d]; renderTraining(); updateProgress(); }
+function toggleEx(k) { expandedEx = expandedEx===k ? null : k; renderTraining(); }
+
+// ── DIET TAB ──────────────────────────────────────────
+function renderDiet() {
+  const cats = ['Todos','Desayuno','Almuerzo','Cena','Snack'];
+  const filtered = recFilter==='Todos' ? recipes : recipes.filter(r=>r.category.toLowerCase().includes(recFilter.toLowerCase()));
+
+  let html = `<div class="pad">
+    <div class="box box-dark">
+      <div class="box-title" style="color:var(--accent);letter-spacing:1px;text-transform:uppercase">Objetivos Diarios</div>
+      <div class="macro-grid">
+        <div class="macro-cell"><div class="macro-val" style="color:var(--accent)">1.900</div><div class="macro-label">Kcal</div></div>
+        <div class="macro-cell"><div class="macro-val" style="color:#ff8c69">170g</div><div class="macro-label">Proteína</div></div>
+        <div class="macro-cell"><div class="macro-val" style="color:var(--info)">170g</div><div class="macro-label">Carbs</div></div>
+        <div class="macro-cell"><div class="macro-val" style="color:var(--warn)">60g</div><div class="macro-label">Grasa</div></div>
+      </div>
+      <div class="box box-green" style="margin-top:10px;margin-bottom:0">
+        <div class="box-text" style="color:#7ecf7e">💡 <strong>35-40g proteína por comida × 4 ingestas.</strong> Maximiza síntesis muscular a partir de los 40 años.</div>
+      </div>
+    </div>
+    <div class="box box-blue">
+      <div class="box-title" style="color:var(--info)">📦 BATCH COOKING (recetas con 🔄)</div>
+      <div class="box-text" style="color:#8ab4d0">Prepara los platos 🔄 el <strong>domingo</strong>. Reduce el tiempo diario de cocina a menos de 15 min.</div>
+    </div>
+  </div>`;
+
+  html += `<div class="filter-scroll"><div class="filter-inner">`;
+  cats.forEach(c => {
+    html += `<button class="filter-btn ${recFilter===c?'active':''}" onclick="setFilter('${c}')">${c}</button>`;
+  });
+  html += `</div></div><div class="pad">`;
+
+  filtered.forEach((rec, i) => {
+    const open = expandedRec === i;
+    html += `<div class="card ${open?'expanded':''}">
+      <button class="card-header" onclick="toggleRec(${i})">
+        <div class="card-icon" style="width:44px;height:44px;font-size:22px">${rec.icon}</div>
+        <div class="card-meta">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="card-name">${rec.name}</span>
+            ${rec.batch?'<span class="batch-badge">🔄 Batch</span>':''}
+          </div>
+          <div class="card-sub">${rec.category} · ${rec.time}</div>
+        </div>
+        <div class="card-right">
+          <div class="card-sets">${rec.kcal} kcal</div>
+          <div style="font-size:11px;color:#ff8c69">🥩 ${rec.protein}g</div>
+        </div>
+      </button>`;
+    if(open) {
+      html += `<div class="card-body">`;
+      if(rec.batch) html += `<div class="box box-blue" style="margin-top:10px"><div class="box-text" style="color:var(--info)">📦 <strong>Batch:</strong> ${rec.batchNote}</div></div>`;
+      html += `<div class="tips-title" style="margin-top:${rec.batch?'8px':'10px'}">Ingredientes</div>
+        ${rec.ingredients.map(ing=>`<div style="font-size:12px;color:#ccc;margin-bottom:4px;display:flex;gap:8px"><span style="color:var(--muted)">·</span>${ing}</div>`).join('')}
+        <div class="tips-title" style="margin-top:12px">Preparación</div>
+        ${rec.steps.map((s,si)=>`<div style="display:flex;gap:10px;margin-bottom:7px;align-items:flex-start"><div style="width:20px;height:20px;border-radius:50%;background:rgba(200,245,90,0.15);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent);font-weight:700;flex-shrink:0">${si+1}</div><div style="font-size:12px;color:#bbb;line-height:1.5;padding-top:1px">${s}</div></div>`).join('')}
+        <div class="box box-green" style="margin-top:10px"><div class="box-text" style="color:#7ecf7e">💡 ${rec.tip}</div></div>
+      </div>`;
+    }
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  document.getElementById('tab-diet').innerHTML = html;
+}
+
+function setFilter(f) { recFilter = f; expandedRec = null; renderDiet(); }
+function toggleRec(i) { expandedRec = expandedRec===i ? null : i; renderDiet(); }
+
+// ── WEEKLY TAB ────────────────────────────────────────
+function renderWeekly() {
+  const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  const fullNames = { Lun:'Lunes', Mar:'Martes', Mié:'Miércoles', Jue:'Jueves', Vie:'Viernes', Sáb:'Sábado', Dom:'Domingo' };
+  const meal = weekMeals[currentWeekDay];
+
+  let html = `<div class="week-scroll"><div class="week-inner">`;
+  days.forEach(d => {
+    const a = d===currentWeekDay;
+    html += `<button class="week-btn ${a?'active':''}" onclick="setWeekDay('${d}')">
+      <span class="week-day ${a?'active':''}">${d}</span>
+      <span class="week-type">${weekMeals[d].type.split(' ')[0]}</span>
+    </button>`;
+  });
+  html += `</div></div>`;
+
+  html += `<div class="pad">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:16px;font-weight:800">${fullNames[currentWeekDay]}</div>
+      <div style="background:var(--surface);border-radius:10px;padding:6px 12px;font-size:12px;color:var(--accent);font-weight:600">${meal.type}</div>
+    </div>
+    <div class="box box-dark" style="margin-bottom:10px">
+      <div class="kcal-row"><span style="font-size:12px;color:var(--muted)">Calorías del día</span><span style="font-size:14px;font-weight:700;color:var(--accent)">${meal.kcal} / 1.900 kcal</span></div>
+      <div style="background:var(--border);border-radius:6px;height:8px"><div style="background:${meal.kcal<=1900?'var(--accent)':'var(--danger)'};height:8px;border-radius:6px;width:${Math.min(meal.kcal/1900*100,100).toFixed(0)}%"></div></div>
+    </div>`;
+
+  [['🌅','Desayuno','breakfast'],['☀️','Almuerzo','lunch'],['🍎','Snack','snack'],['🌙','Cena','dinner']].forEach(([ic,label,key]) => {
+    html += `<div class="meal-card"><span style="font-size:20px">${ic}</span><div><div style="font-size:11px;color:var(--muted);font-weight:600">${label}</div><div style="font-size:13px;margin-top:2px">${meal[key]}</div></div></div>`;
+  });
+
+  html += `<div class="box box-blue">
+    <div class="box-title" style="color:var(--info)">📦 BATCH COOK DEL DOMINGO</div>
+    <div class="box-text" style="color:#8ab4d0">• Chili Vegetal (4 porciones → congela)<br>• Bowl Lentejas+Arroz (4 porciones)<br>• Garbanzos Asados (3 porciones)<br>• Overnight Oats (3-4 tarros)<br>• Tofu marinado ya cortado</div>
+  </div></div>`;
+
+  document.getElementById('tab-weekly').innerHTML = html;
+}
+
+function setWeekDay(d) { currentWeekDay = d; renderWeekly(); }
+
+// ── SAFETY TAB ────────────────────────────────────────
+function renderSafety() {
+  let html = `<div class="pad">
+    <div class="box box-green" style="border-radius:16px;padding:16px;margin-bottom:12px">
+      <div class="box-title" style="color:#7ecf7e;font-size:13px">✅ RECUPERACIÓN COMPLETA (10 años post-op)</div>
+      <div class="box-text" style="color:#a0d0a0">Con 10 años de recuperación la zona está <strong>totalmente cicatrizada</strong>. Las restricciones quirúrgicas conservadoras ya no aplican. Las únicas limitaciones permanentes son las indicadas por tu médico: <strong>sin rotación con carga y sin hiperextensión</strong>.</div>
+    </div>`;
+
+  safetyRules.forEach(r => {
+    html += `<div class="safety-rule"><span class="rule-icon">${r.icon}</span><div><div class="rule-title">${r.rule}</div><div class="rule-detail">${r.detail}</div></div></div>`;
+  });
+
+  html += `<div class="box box-green" style="margin-top:4px">
+    <div class="box-title" style="color:#7ecf7e">💨 RESPIRACIÓN CORRECTA (buena práctica general)</div>
+    <div class="breath-grid">
+      <div class="breath-cell" style="background:#1e3a28"><div class="breath-icon">⬆️</div><div class="breath-label" style="color:#7ecf7e">Subida/Empuje</div><div class="breath-action" style="color:#a0d0a0">EXHALA</div></div>
+      <div class="breath-cell" style="background:#1e3a28"><div class="breath-icon">⬇️</div><div class="breath-label" style="color:#7ecf7e">Bajada/Retorno</div><div class="breath-action" style="color:#a0d0a0">INHALA</div></div>
+      <div class="breath-cell" style="background:#2a2a1e"><div class="breath-icon">⚡</div><div class="breath-label" style="color:var(--warn)">Valsalva</div><div class="breath-action" style="color:#c8a870">Solo en máximos</div></div>
+    </div>
+    <div class="box-text" style="color:#8ab4a0">Ya no hay restricción quirúrgica. Exhalar en el esfuerzo sigue siendo la técnica correcta en el 95% de los casos.</div>
+  </div>
+
+  <div class="box box-dark" style="margin-top:10px">
+    <div class="box-title" style="color:var(--accent)">📊 HITOS DE PROGRESO</div>
+    <div class="milestone"><div class="milestone-badge" style="background:rgba(200,245,90,0.15);border:1px solid var(--accent);color:var(--accent)">Mes 1</div><div style="font-size:12px;color:#bbb;padding-top:3px">Técnica dominada, −1 a −2 kg</div></div>
+    <div class="milestone"><div class="milestone-badge" style="background:rgba(90,200,250,0.15);border:1px solid var(--info);color:var(--info)">Mes 2</div><div style="font-size:12px;color:#bbb;padding-top:3px">Sobrecarga real, −3 a −4 kg total</div></div>
+    <div class="milestone"><div class="milestone-badge" style="background:rgba(255,179,71,0.15);border:1px solid var(--warn);color:var(--warn)">Mes 3-4</div><div style="font-size:12px;color:#bbb;padding-top:3px">−6 a −8 kg, BMI &lt;25</div></div>
+  </div>
+
+  <div class="box box-red" style="margin-top:8px">
+    <div class="box-title" style="color:var(--danger)">🚨 PARA INMEDIATAMENTE SI:</div>
+    <div class="box-text" style="color:#d08080">• Aparece un bulto en zona quirúrgica<br>• Dolor agudo o ardor inguinal<br>• Sensación de "tirón" o desgarro<br>• Hinchazón inusual en la zona</div>
+  </div></div>`;
+
+  document.getElementById('tab-safety').innerHTML = html;
+}
+
+// ── INIT ──────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
