@@ -100,6 +100,7 @@
   .tag.prof { border-color: var(--s3); color: var(--s3); }
   .tag.pers { border-color: var(--s1); color: var(--s1); }
   .tag.tras { color: var(--muted); }
+  .tag.alq { border-color: var(--s4); color: var(--s4); }
   .tag.pend { border-color: var(--warn); color: var(--warn); }
   .tag.ok { border-color: var(--good); color: var(--good); }
   .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 13px; }
@@ -167,6 +168,7 @@
     <button class="chip on" data-ambito="todo">Todo</button>
     <button class="chip" data-ambito="personal">🏠 Personal</button>
     <button class="chip" data-ambito="profesional">💼 Profesional</button>
+    <button class="chip" data-ambito="alquiler">🏡 Alquiler casa</button>
   </div>
 </div>
 
@@ -195,9 +197,9 @@
   <h2>Gastos por categoría</h2>
   <div class="card" id="catList"></div>
 
-  <h2>Personal vs profesional (gastos)</h2>
+  <h2>Reparto de los gastos</h2>
   <div class="card" id="splitCard"></div>
-  <p class="hint" style="margin-top:10px">Los traspasos entre tus cuentas (a IVA, a la hucha…) no cuentan como ingreso ni gasto.</p>
+  <p class="hint" style="margin-top:10px">Los traspasos entre tus cuentas (a IVA, a la hucha…) y los Bizum de deudas no cuentan como ingreso ni gasto.</p>
 </section>
 
 <!-- MOVIMIENTOS -->
@@ -220,6 +222,8 @@
   <div class="card" id="recList"></div>
   <h2>Resumen del año</h2>
   <div class="card" id="anualCard"></div>
+  <h2>Alquiler de la casa · Renta</h2>
+  <div class="card" id="alqCard"></div>
   <p class="hint" style="margin-top:10px">Estimación orientativa (estimación directa simplificada, sin el 5 % de gastos de difícil justificación). Revisa siempre los importes antes de presentar.</p>
 </section>
 
@@ -323,8 +327,8 @@ const CUENTAS_DEFECTO = [
 ];
 // Árbol de categorías (basado en tu hoja "Presupuesto vida")
 const CATEGORIAS = {
-  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Alquiler Passatemps', 'Alquiler Verd 1', 'Alquiler Verd 2', 'Alquiler Aleix'],
-  'Trabajo': ['Ingresos', 'Cuota autónomos', 'Material trabajo', 'Transporte laboral', 'Dietas', 'Software', 'Alquiler estudio', 'Estudio', 'Gestoría', 'Formación'],
+  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Suministros', 'Comunidad', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Alquiler Passatemps', 'Alquiler Verd 1', 'Alquiler Verd 2', 'Alquiler Aleix'],
+  'Trabajo': ['Ingresos', 'Cuota autónomos', 'Material trabajo', 'Transporte laboral', 'Dietas', 'Software', 'Alquiler estudio', 'Estudio', 'Gestoría', 'Formación', 'Prestación desempleo'],
   'Tecnología': ['Internet', 'Móvil', 'Equipos', 'Reparaciones', 'Suscripciones'],
   'Comida': ['Supermercado', 'Panadería', 'Comer fuera'],
   'Salud': ['Farmacia', 'Terapia', 'Dentista'],
@@ -332,11 +336,12 @@ const CATEGORIAS = {
   'Educación': ['Cursos', 'Clases'],
   'Ocio': ['Viajes', 'Cultura', 'Restaurantes', 'Copas', 'Deporte'],
   'Personales': ['Peluquería', 'Higiene', 'Efectivo', 'Otros personales'],
-  'Finanzas': ['Hacienda IRPF', 'Hacienda IVA', 'Seguro vida', 'Donaciones', 'Comisiones'],
+  'Finanzas': ['Hacienda IRPF', 'Hacienda IVA', 'Seguro vida', 'Donaciones', 'Comisiones', 'Deudas / reembolsos'],
   'Ropa': ['Ropa', 'Calzado'],
   'Traspaso': [],
   'Otros': [],
 };
+const AMBITOS = { personal: 'personal', profesional: 'profesional', alquiler: 'alquiler casa', traspaso: 'no computa' };
 const CAT_RECIBIDAS = ['Material', 'Herramientas', 'Transporte', 'Formación', 'Software', 'Servicios', 'Suministros', 'Otros'];
 const TIPOS_FACTURA = {
   servicio: { label: 'Escenografía / servicio', iva: 21, irpf: 15 },
@@ -352,7 +357,7 @@ function cargarGuardados() {
 function normalizar(d) {
   d.cuentas = d.cuentas && d.cuentas.length ? d.cuentas : CUENTAS_DEFECTO;
   for (const k of ['movimientos', 'facturas', 'recibidas', 'metas']) d[k] = Array.isArray(d[k]) ? d[k] : [];
-  d.config = Object.assign({ mesesFondo: 6, pctHucha: 10, extraIrpf: 5 }, d.config || {});
+  d.config = Object.assign({ mesesFondo: 6, pctHucha: 10, extraIrpf: 5, pctInteres: 30, reduccionAlquiler: 50, tipoMarginal: 30 }, d.config || {});
   return d;
 }
 let DATA = normalizar(cargarGuardados() || structuredClone(window.FINANZAS_DEMO || {}));
@@ -408,8 +413,8 @@ function mesesConDatos(n) {
 function medias() {
   const meses = mesesConDatos(6); const n = meses.length || 1;
   const movs = DATA.movimientos.filter(m => meses.includes(ym(m.fecha)));
-  const pers = totales(movs, 'personal'), prof = totales(movs, 'profesional'), tot = totales(movs, 'todo');
-  return { meses: meses.length, costeVida: pers.gas / n, gastoProf: prof.gas / n, ingreso: tot.ing / n, resultado: tot.res / n };
+  const pers = totales(movs, 'personal'), prof = totales(movs, 'profesional'), alq = totales(movs, 'alquiler'), tot = totales(movs, 'todo');
+  return { meses: meses.length, costeVida: pers.gas / n, gastoProf: prof.gas / n, alquilerNeto: alq.res / n, ingreso: tot.ing / n, resultado: tot.res / n };
 }
 
 // ---------- Tooltip ----------
@@ -515,7 +520,7 @@ function renderSalud(t) {
   if (!m.meses) { el.innerHTML = '<div class="empty">Sin datos todavía</div>'; return; }
   const hucha = saldoA('hucha', ultimaFecha());
   const cubiertos = m.costeVida && hucha != null ? hucha / m.costeVida : null;
-  const minimo = (m.costeVida + m.gastoProf) / 0.8;
+  const minimo = Math.max(0, m.costeVida + m.gastoProf - Math.max(0, m.alquilerNeto)) / 0.8;
   // Estado del periodo (como en tu hoja: peligroso si resultado < 0, justo si no cubre un mes de vida)
   let estado;
   if (state.mode !== 'mes') estado = '';
@@ -525,10 +530,11 @@ function renderSalud(t) {
   el.innerHTML = `${estado ? `<div style="margin-bottom:8px">${estado}</div>` : ''}<div class="rows">
     <div><span>Coste de vida medio (personal)</span><b>${eur(m.costeVida)}/mes</b></div>
     <div><span>Gasto profesional medio</span><b>${eur(m.gastoProf)}/mes</b></div>
+    ${m.alquilerNeto ? `<div><span>Alquiler de la casa (neto, tras hipoteca y gastos)</span><b class="${m.alquilerNeto >= 0 ? 'up' : 'down'}">${eur(m.alquilerNeto)}/mes</b></div>` : ''}
     <div><span>Ingreso medio</span><b>${eur(m.ingreso)}/mes</b></div>
     <div><span>Facturación mínima necesaria</span><b>${eur(minimo)}/mes</b></div>
     <div><span>Meses de vida cubiertos por la hucha</span><b class="${cubiertos == null ? '' : cubiertos >= DATA.config.mesesFondo ? 'up' : cubiertos >= 3 ? 'warn' : 'down'}">${cubiertos == null ? '—' : cubiertos.toFixed(1)}</b></div>
-  </div><p class="hint" style="margin-top:8px">Medias de los últimos ${m.meses} meses con datos. La facturación mínima cubre tu vida y tus gastos de trabajo dejando un 20 % para impuestos.</p>`;
+  </div><p class="hint" style="margin-top:8px">Medias de los últimos ${m.meses} meses con datos. La facturación mínima cubre tu vida y tus gastos de trabajo (descontando lo que te deja el alquiler) dejando un 20 % para impuestos.</p>`;
 }
 
 function catList(movs) {
@@ -549,13 +555,14 @@ function catList(movs) {
 }
 
 function splitCard(movs) {
-  let p = 0, q = 0;
-  for (const m of movs) if (m.importe < 0) { if (m.ambito === 'personal') p -= m.importe; else if (m.ambito === 'profesional') q -= m.importe; }
-  const t = p + q, el = document.getElementById('splitCard');
+  const g = { personal: 0, profesional: 0, alquiler: 0 };
+  for (const m of movs) if (m.importe < 0 && m.ambito in g) g[m.ambito] -= m.importe;
+  const t = g.personal + g.profesional + g.alquiler, el = document.getElementById('splitCard');
   if (!t) { el.innerHTML = '<div class="empty">Sin gastos en este periodo</div>'; return; }
-  el.innerHTML = `<div class="legend" style="justify-content:space-between;margin:0"><span><i style="background:var(--s1)"></i>Personal <b style="color:var(--text)">${eur(p)}</b></span><span><i style="background:var(--s3)"></i>Profesional <b style="color:var(--text)">${eur(q)}</b></span></div>
-    <div class="split"><div style="flex:${p}"></div><div style="flex:${q}"></div></div>
-    <div class="hint">${Math.round(p / t * 100)}% personal · ${Math.round(q / t * 100)}% profesional</div>`;
+  const seg = [['personal', 'Personal', 'var(--s1)'], ['profesional', 'Profesional', 'var(--s3)'], ['alquiler', 'Casa alquilada', 'var(--s4)']].filter(([k]) => g[k]);
+  el.innerHTML = `<div class="legend" style="margin:0">${seg.map(([k, l, c]) => `<span><i style="background:${c}"></i>${l} <b style="color:var(--text)">${eur(g[k])}</b></span>`).join('')}</div>
+    <div class="split">${seg.map(([k, , c]) => `<div style="flex:${g[k]};background:${c}"></div>`).join('')}</div>
+    <div class="hint">${seg.map(([k, l]) => `${Math.round(g[k] / t * 100)}% ${l.toLowerCase()}`).join(' · ')}</div>`;
 }
 
 // ---------- Movimientos ----------
@@ -578,11 +585,11 @@ function renderMovs() {
   const el = document.getElementById('movList');
   if (!movs.length) { el.innerHTML = '<div class="empty">No hay movimientos con estos filtros</div>'; return; }
   let html = '', last = '';
-  const tagCls = { personal: 'pers', profesional: 'prof', traspaso: 'tras' };
+  const tagCls = { personal: 'pers', profesional: 'prof', alquiler: 'alq', traspaso: 'tras' };
   for (const m of movs) {
     if (m.fecha !== last) { html += `<div class="mov-group">${parseF(m.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</div>`; last = m.fecha; }
     html += `<div class="mov" data-id="${esc(m.id)}"><div class="mov-concepto">${esc(m.concepto)}</div><div class="mov-imp ${m.importe >= 0 ? 'up' : ''}">${m.importe >= 0 ? '+' : ''}${eur2(m.importe)}</div>
-      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
+      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(AMBITOS[m.ambito] || m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
       <div class="mov-saldo">${m.saldo != null ? 'saldo ' + eur2(m.saldo) : ''}</div></div>`;
   }
   const t = totales(movs);
@@ -594,14 +601,14 @@ function editarMovimiento(id) {
   abrirForm({
     titulo: `${m.concepto} · ${eur2(m.importe)}`,
     campos: [
-      { name: 'ambito', label: 'Ámbito', type: 'select', options: [['personal', 'Personal'], ['profesional', 'Profesional'], ['traspaso', 'Traspaso entre cuentas']], value: m.ambito },
+      { name: 'ambito', label: 'Ámbito', type: 'select', options: [['personal', 'Personal'], ['profesional', 'Profesional'], ['alquiler', 'Alquiler de la casa'], ['traspaso', 'No computa (traspaso entre cuentas / deudas)']], value: m.ambito },
       { name: 'categoria', label: 'Categoría', type: 'select', options: Object.keys(CATEGORIAS), value: m.categoria },
       { name: 'subcategoria', label: 'Subcategoría', type: 'select', options: [''].concat(CATEGORIAS[m.categoria] || []), value: m.subcategoria || '', full: true },
       { name: 'nota', label: 'Nota', type: 'text', value: m.nota || '', full: true },
     ],
     alCambiar(f, campo) {
       if (campo === 'categoria') { const s = f.elements.subcategoria; s.innerHTML = [''].concat(CATEGORIAS[f.elements.categoria.value] || []).map(o => `<option>${esc(o)}</option>`).join(''); }
-      if (campo === 'ambito' && f.elements.ambito.value === 'traspaso') { f.elements.categoria.value = 'Traspaso'; this.alCambiar(f, 'categoria'); }
+      if (campo === 'ambito' && f.elements.ambito.value === 'traspaso' && f.elements.categoria.value !== 'Finanzas') { f.elements.categoria.value = 'Traspaso'; this.alCambiar(f, 'categoria'); }
     },
     guardar(v) { Object.assign(m, { ambito: v.ambito, categoria: v.categoria, subcategoria: v.subcategoria || undefined, nota: v.nota || undefined }); },
   });
@@ -683,6 +690,7 @@ function renderAutonomo() {
       </div>
       <p class="hint" style="margin-top:6px">Compara lo que tienes apartado con lo que te toca pagar este trimestre (303 + 130). Si te sobra, es colchón para la Renta de junio.</p>
     </div>
+    ${c.em.length ? '' : `<div class="card" style="margin-top:10px;border-color:var(--warn)"><div class="hint"><b class="warn">Sin facturas este trimestre.</b> El 303 hay que presentarlo igualmente (sin actividad o con el IVA de tus gastos a compensar). El 130 también, salvo que estés exento por la regla del 70 %.</div></div>`}
     <h2>Modelo 303 · IVA</h2>
     <div class="card"><div class="rows">
       <div><span>IVA repercutido (en tus facturas)</span><b>${eur2(c.ivaRep)}</b></div>
@@ -701,6 +709,7 @@ function renderAutonomo() {
     </div>
     <p class="hint" style="margin-top:6px">${c.ingAc ? `El <b>${Math.round(c.pctRet * 100)} %</b> de tus ingresos de este año lleva retención. ` : ''}Si el año pasado más del 70 % de tus ingresos llevaron retención, no estás obligado a presentar el 130 (pero conviene seguir apartando para la Renta).</p></div>`;
 
+  renderAlquilerFiscal(y);
   // facturas emitidas
   const fl = document.getElementById('factList');
   fl.innerHTML = c.em.length || DATA.facturas.some(f => f.estado === 'anulada' && f.fecha >= c.ini && f.fecha <= c.fin)
@@ -734,6 +743,33 @@ function renderAutonomo() {
     ${fila('Retenciones', t => t.ret)}${fila('IVA (303)', t => t.m303)}${fila('IRPF (130)', t => t.m130)}</table>`;
 }
 
+function renderAlquilerFiscal(y) {
+  const movs = DATA.movimientos.filter(m => m.ambito === 'alquiler' && m.fecha.startsWith(String(y)));
+  const el = document.getElementById('alqCard'), cfg = DATA.config;
+  if (!movs.length) { el.innerHTML = '<div class="empty">Sin movimientos del alquiler este año</div>'; return; }
+  const ing = movs.filter(m => m.importe > 0).reduce((a, m) => a + m.importe, 0);
+  const hip = movs.filter(m => m.importe < 0 && m.subcategoria === 'Hipoteca').reduce((a, m) => a - m.importe, 0);
+  const otros = movs.filter(m => m.importe < 0 && m.subcategoria !== 'Hipoteca').reduce((a, m) => a - m.importe, 0);
+  const interes = hip * cfg.pctInteres / 100;
+  const neto = ing - interes - otros, base = Math.max(0, neto) * (1 - cfg.reduccionAlquiler / 100), reserva = base * cfg.tipoMarginal / 100;
+  const meses = new Set(movs.map(m => ym(m.fecha))).size || 1;
+  el.innerHTML = `<div class="rows">
+    <div><span>Alquileres cobrados en ${y}</span><b>${eur(ing)}</b></div>
+    <div><span>Intereses de la hipoteca (≈${cfg.pctInteres} % de las cuotas, ${eur(hip)})</span><b>−${eur(interes)}</b></div>
+    <div><span>Otros gastos de la casa (IBI, seguro, comunidad…)</span><b>−${eur(otros)}</b></div>
+    <div><span>Rendimiento neto (sin amortización)</span><b>${eur(neto)}</b></div>
+    <div><span>Tras reducción del ${cfg.reduccionAlquiler} %</span><b>${eur(base)}</b></div>
+    <div class="total"><span>Reserva para la Renta (al ${cfg.tipoMarginal} %)</span><b class="warn">${eur(reserva)}</b></div>
+  </div>
+  <p class="hint" style="margin-top:8px">Unos <b>${eur(reserva / meses)}/mes</b>. Los alquileres no llevan retención, así que este IRPF se paga entero en la Renta de junio. Solo desgravan los <b>intereses</b> de la hipoteca (no el capital) y además puedes deducir la amortización (3 % del valor de construcción), que reduce bastante el rendimiento: pide el dato del catastro y lo afinamos.</p>
+  <div class="calc" style="margin-top:10px">
+    <label>% intereses en la cuota<input id="cfgInt" type="number" value="${cfg.pctInteres}"></label>
+    <label>Reducción por vivienda %<input id="cfgRed" type="number" value="${cfg.reduccionAlquiler}"></label>
+    <label class="full" style="grid-column:1/-1">Tipo marginal estimado de IRPF %<input id="cfgMarg" type="number" value="${cfg.tipoMarginal}"></label>
+  </div>`;
+  const bind = (id, k) => document.getElementById(id).onchange = e => { cfg[k] = Math.max(0, Math.min(100, +e.target.value || 0)); guardar(); renderAlquilerFiscal(y); };
+  bind('cfgInt', 'pctInteres'); bind('cfgRed', 'reduccionAlquiler'); bind('cfgMarg', 'tipoMarginal');
+}
 function siguienteNumero(fecha) {
   const y = fecha.slice(0, 4);
   const n = Math.max(0, ...DATA.facturas.filter(f => (f.numero || '').startsWith(y + '-')).map(f => +f.numero.split('-')[1] || 0));
@@ -822,7 +858,7 @@ function renderReparto() {
     <div><span>🏛️</span><span>A cuenta <b>IVA</b>: reserva IRPF (${Math.max(0, 20 - t.irpf) + cfg.extraIrpf}% de la base)</span><b>${eur2(irpf)}</b></div>
     <div><span>🐷</span><span>A la <b>Hucha</b> (${cfg.pctHucha}% de lo que queda)</span><b>${eur2(hucha)}</b></div>
     <div><span>🏠</span><span>Disponible para <b>Gastos</b> / sueldo</span><b class="up">${eur2(sueldo)}</b></div>
-    <p class="hint" style="margin-top:8px">La reserva IRPF incluye un ${cfg.extraIrpf}% extra para la declaración de la Renta, porque con varios clientes y alquileres el 15 % de retención suele quedarse corto. Ajústalo cuando veamos tu última Renta:
+    <p class="hint" style="margin-top:8px">La reserva IRPF incluye un ${cfg.extraIrpf}% extra para la declaración de la Renta, porque con varios clientes el 15 % de retención suele quedarse corto (la reserva del alquiler va aparte, en la pestaña Autónomo). Ajústalo cuando veamos tu última Renta:
     <input id="cfgExtra" type="number" value="${cfg.extraIrpf}" style="width:60px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:2px 6px"> %</p>`;
   document.getElementById('cfgExtra').onchange = e => { cfg.extraIrpf = Math.max(0, +e.target.value || 0); guardar(); renderReparto(); };
 }
