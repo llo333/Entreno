@@ -1,0 +1,5 @@
+# Nunca subir datos bancarios reales (el repo es público)
+*.pdf
+finanzas/datos/
+finanzas/**/movimientos-*.json
+finanzas/**/finanzas-*.json
