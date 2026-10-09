@@ -24,50 +24,82 @@ a partir de los extractos bancarios.
 | `iva`    | IVA que se aparta para Hacienda             |
 | `hucha`  | Ahorro                                      |
 
-## Formato del archivo de importación
+## Pestañas
+
+- **Resumen**: ingresos, gastos, resultado, tasa de ahorro, salud financiera (coste de vida medio,
+  facturación mínima necesaria, meses cubiertos por la hucha), evolución mensual y gastos por categoría.
+- **Movimientos**: lista filtrable; tocar un movimiento permite reclasificarlo.
+- **Autónomo**: facturas emitidas y gastos con factura, estimación del **303** (IVA) y del **130**
+  (IRPF, acumulado desde enero), comparación con el saldo de la cuenta IVA, pendientes de cobro y resumen anual.
+  Al abrirla muestra el trimestre que toca presentar (del 1 al 20 del mes siguiente, aún el anterior).
+- **Ahorro**: saldos de las cuentas, fondo de emergencia, reparto de cada cobro (IVA → reserva IRPF → hucha → sueldo),
+  metas de ahorro, simulador de inversión y estrategia por pasos.
+- **Datos**: importar, copia de seguridad y borrado.
+
+## Datos fiscales
+
+| Trabajo                        | IVA          | Retención IRPF |
+|--------------------------------|--------------|----------------|
+| Escenografía / servicios       | 21 %         | 15 %           |
+| Docencia                       | 0 % (exenta) | 15 %           |
+| Venta de taller a particulares | 21 %         | 0 %            |
+
+- 303 = IVA repercutido − IVA soportado (por fecha de factura).
+- 130 = 20 % × (ingresos − gastos deducibles desde el 1 de enero) − retenciones − pagos 130 anteriores.
+  Gastos deducibles = bases de gastos con factura × % deducible + cuota de autónomos (de los movimientos con subcategoría `Cuota autónomos`).
+- Plazos: 20 abr (1T), 20 jul (2T), 20 oct (3T), 30 ene (4T).
+
+## Formato del archivo de importación (v2)
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "cuentas": [{ "id": "gastos", "nombre": "Gastos", "descripcion": "Día a día y recibos" }],
   "movimientos": [
-    {
-      "id": "gastos-2026-10-05-001",
-      "fecha": "2026-10-05",
-      "cuenta": "gastos",
-      "concepto": "RECIBO IBERDROLA",
-      "importe": -81.70,
-      "saldo": 1205.06,
-      "ambito": "personal",
-      "categoria": "Suministros",
-      "nota": "opcional"
-    }
-  ]
+    { "id": "gastos-2026-10-05-001", "fecha": "2026-10-05", "cuenta": "gastos", "concepto": "SOM ENERGIA",
+      "importe": -81.70, "saldo": 1205.06, "ambito": "personal", "categoria": "Vivienda", "subcategoria": "Luz", "nota": "opcional" }
+  ],
+  "facturas": [
+    { "id": "f-2026-010", "numero": "2026-010", "fecha": "2026-10-01", "cliente": "…", "nif": "…", "tipo": "servicio",
+      "concepto": "…", "base": 1000, "ivaPct": 21, "irpfPct": 15, "estado": "pendiente", "fechaCobro": null }
+  ],
+  "recibidas": [
+    { "id": "r-…", "fecha": "2026-10-02", "proveedor": "Leroy Merlin SLU", "numero": "056-…", "concepto": "Material",
+      "categoria": "Material", "base": 41.95, "iva": 8.81, "deduciblePct": 100 }
+  ],
+  "metas": [{ "id": "m-…", "nombre": "Vacaciones", "objetivo": 1500, "ahorrado": 300, "fecha": "2027-06-30" }]
 }
 ```
 
 - `importe`: negativo = cargo, positivo = abono.
-- `ambito`: `personal`, `profesional` o `traspaso` (movimientos entre cuentas propias; no cuentan como ingreso ni gasto).
-- `id`: estable y único: `<cuenta>-<fecha>-<nº de orden del movimiento ese día en el extracto>`.
+- `ambito`: `personal`, `profesional` o `traspaso` (entre cuentas propias; no cuenta como ingreso ni gasto).
+- `id` de movimientos: `<cuenta>-<fecha>-<nº de orden ese día en el extracto>`. La cuenta `excel` es el histórico importado de las hojas de cálculo (sin saldo).
+- Categorías: árbol de la hoja *Presupuesto vida* (Vivienda, Trabajo, Tecnología, Comida, Salud, Transporte,
+  Educación, Ocio, Personales, Finanzas, Ropa) más `Traspaso` y `Otros`.
 
 ## Reglas de clasificación (se irán ampliando)
 
 | Concepto contiene                       | Ámbito        | Categoría             |
 |-----------------------------------------|---------------|-----------------------|
-| TGSS, SEG. SOCIAL                       | profesional   | Seguridad Social      |
-| AEAT, AGENCIA TRIBUTARIA                | profesional   | Impuestos             |
-| Transferencias de clientes              | profesional   | Facturación           |
-| Traspasos entre cuentas propias         | traspaso      | Traspaso              |
-| MERCADONA, CONSUM, LIDL, CARREFOUR…     | personal      | Alimentación          |
-| IBERDROLA, ENDESA, NATURGY, AGUA…       | personal      | Suministros           |
-| Alquiler / hipoteca vivienda            | personal      | Vivienda              |
-| Gasolineras                             | (preguntar)   | Vehículo              |
+| TGSS.COTIZACI.                          | profesional   | Trabajo › Cuota autónomos      |
+| I.V.A. MOD.303                          | profesional   | Finanzas › Hacienda IVA        |
+| MOD.130, I.R.P.F.                       | profesional   | Finanzas › Hacienda IRPF       |
+| Transferencias de clientes              | profesional   | Trabajo › Ingresos             |
+| TRASPÀS PROPI / traspasos entre cuentas | traspaso      | Traspaso                       |
+| ALDI, BONPREU, DIA, SUPER…              | personal      | Comida › Supermercado          |
+| SOM ENERGIA                             | personal      | Vivienda › Luz                 |
+| Alquiler, hipoteca                      | personal      | Vivienda › Alquiler / Hipoteca |
+| Alquileres cobrados (Passatemps, Verd…) | personal      | Vivienda › Alquiler …          |
+| GAS OIL ROVIRA, REPSOL… (furgoneta)     | profesional   | Transporte › Combustible       |
+| LEROY MERLIN, FERRETERIA, OBRAMAT…      | profesional   | Trabajo › Material trabajo     |
+| REINT.CAIXER                            | personal      | Personales › Efectivo          |
+| BIZUM REBUT / ENVIAT                    | (preguntar)   | —                              |
 
 Si algo es dudoso, Claude pregunta antes de clasificarlo.
 
 ## Ideas pendientes
 
-- Facturas emitidas (IVA 21 %, retención IRPF 15 % / 7 %) y conciliación con los cobros.
-- Estimación del modelo 303 (IVA) y del 130 (pago fraccionado del IRPF) por trimestre.
-- Comparar el saldo de la cuenta IVA con el IVA que realmente toca pagar.
-- Editar la categoría de un movimiento desde la app.
+- Generar el PDF de cada factura desde la app.
+- Marcar automáticamente una factura como cobrada cuando aparezca el ingreso en el extracto.
+- Opción del 5 % de gastos de difícil justificación en el 130.
+- Estimación de la Renta anual (incluyendo alquileres).
