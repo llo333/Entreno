@@ -54,8 +54,9 @@ async function capturar(request, env, url) {
     return json({ ok: false, error: "Faltan variables NOTION_TOKEN, NOTION_DB o CLAVE en el Worker" }, 500);
   }
 
-  const clave = request.headers.get("x-clave") || url.searchParams.get("clave") || "";
-  if (!(await iguales(clave, env.CLAVE))) return json({ ok: false, error: "Clave incorrecta" }, 401);
+  // Se ignoran espacios al principio/final por si se colaron al copiar la clave.
+  const clave = (request.headers.get("x-clave") || url.searchParams.get("clave") || "").trim();
+  if (!(await iguales(clave, env.CLAVE.trim()))) return json({ ok: false, error: "Clave incorrecta" }, 401);
 
   let texto = "";
   const tipo = request.headers.get("content-type") || "";
@@ -233,7 +234,7 @@ const PAGE = `<!doctype html>
 
   <form id="config">
     <p class="hint">Primera vez: escribe la clave que pusiste en el Worker (variable CLAVE).</p>
-    <textarea id="clave" rows="1" style="min-height:0" placeholder="Clave" autocomplete="off"></textarea>
+    <input id="clave" type="text" placeholder="Clave" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-size:19px">
     <button>Guardar clave</button>
   </form>
 
