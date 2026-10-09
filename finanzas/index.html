@@ -327,7 +327,7 @@ const CUENTAS_DEFECTO = [
 ];
 // Árbol de categorías (basado en tu hoja "Presupuesto vida")
 const CATEGORIAS = {
-  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Suministros', 'Comunidad', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Alquiler Passatemps', 'Alquiler Verd 1', 'Alquiler Verd 2', 'Alquiler Aleix'],
+  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Suministros', 'Comunidad', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Fianzas', 'Gastos repercutidos', 'Alquiler Passatemps', 'Alquiler Verd 1 y 2'],
   'Trabajo': ['Ingresos', 'Cuota autónomos', 'Material trabajo', 'Transporte laboral', 'Dietas', 'Software', 'Alquiler estudio', 'Estudio', 'Gestoría', 'Formación', 'Prestación desempleo'],
   'Tecnología': ['Internet', 'Móvil', 'Equipos', 'Reparaciones', 'Suscripciones'],
   'Comida': ['Supermercado', 'Panadería', 'Comer fuera'],
@@ -335,8 +335,9 @@ const CATEGORIAS = {
   'Transporte': ['Transporte público', 'Combustible', 'Parking', 'Peaje', 'Lavado vehículo', 'ITV', 'Revisiones', 'Seguro vehículo', 'Impuesto vehículo', 'Multas', 'Equipamiento'],
   'Educación': ['Cursos', 'Clases'],
   'Ocio': ['Viajes', 'Cultura', 'Restaurantes', 'Copas', 'Deporte'],
-  'Personales': ['Peluquería', 'Higiene', 'Efectivo', 'Otros personales'],
-  'Finanzas': ['Hacienda IRPF', 'Hacienda IVA', 'Seguro vida', 'Donaciones', 'Comisiones', 'Deudas / reembolsos'],
+  'Personales': ['Peluquería', 'Higiene', 'Efectivo', 'Bizum enviado', 'Otros personales'],
+  'Compras': ['Online', 'Tiendas', 'Devoluciones'],
+  'Finanzas': ['Hacienda IRPF', 'Hacienda IVA', 'Gestoría Renta', 'Seguro vida', 'Seguros', 'Donaciones', 'Comisiones', 'Tasas', 'Deudas / reembolsos'],
   'Ropa': ['Ropa', 'Calzado'],
   'Traspaso': [],
   'Otros': [],
@@ -374,7 +375,7 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const parseF = f => { const [y, m, d] = f.split('-').map(Number); return new Date(y, m - 1, d); };
 const fCorta = f => parseF(f).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const cuentaNombre = id => (DATA.cuentas.find(c => c.id === id) || { nombre: id === 'excel' ? 'Histórico Excel' : id }).nombre;
+const cuentaNombre = id => (DATA.cuentas.find(c => c.id === id) || { nombre: id === 'excel' ? 'Histórico Excel' : id.startsWith('c') && /^c\d+$/.test(id) ? `Cuenta …${id.slice(1)}` : id }).nombre;
 const nuevoId = p => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
 // ---------- Estado ----------
@@ -398,9 +399,19 @@ const enPeriodo = (m, p) => m.fecha >= p.ini && m.fecha <= p.fin;
 const pasaAmbito = m => state.ambito === 'todo' || m.ambito === state.ambito;
 const esReal = m => m.ambito !== 'traspaso';
 
+// Reparte un movimiento en partes {ambito, ing, gas}:
+//  - compartido: % que pertenece a su ámbito; el resto es personal (p. ej. furgoneta 50 % trabajo)
+//  - reembolso: un abono que reduce el gasto de su categoría (p. ej. la parte del alquiler que paga Aleix)
+function partes(m) {
+  if (!esReal(m)) return [];
+  const base = m.importe < 0 ? { ing: 0, gas: -m.importe } : m.reembolso ? { ing: 0, gas: -m.importe } : { ing: m.importe, gas: 0 };
+  if (!m.compartido || m.ambito === 'personal') return [{ ambito: m.ambito, ...base }];
+  const p = m.compartido / 100;
+  return [{ ambito: m.ambito, ing: base.ing * p, gas: base.gas * p }, { ambito: 'personal', ing: base.ing * (1 - p), gas: base.gas * (1 - p) }];
+}
 function totales(movs, ambito = state.ambito) {
   let ing = 0, gas = 0;
-  for (const m of movs) { if (!esReal(m) || (ambito !== 'todo' && m.ambito !== ambito)) continue; if (m.importe > 0) ing += m.importe; else gas -= m.importe; }
+  for (const m of movs) for (const x of partes(m)) { if (ambito !== 'todo' && x.ambito !== ambito) continue; ing += x.ing; gas += x.gas; }
   return { ing, gas, res: ing - gas };
 }
 function mesesConDatos(n) {
@@ -539,16 +550,17 @@ function renderSalud(t) {
 
 function catList(movs) {
   const by = {}, subs = {};
-  for (const m of movs) if (esReal(m) && pasaAmbito(m) && m.importe < 0) {
-    const c = m.categoria || 'Sin categoría'; by[c] = (by[c] || 0) - m.importe;
-    if (m.subcategoria) { subs[c] = subs[c] || {}; subs[c][m.subcategoria] = (subs[c][m.subcategoria] || 0) - m.importe; }
+  for (const m of movs) for (const x of partes(m)) {
+    if (!x.gas || (state.ambito !== 'todo' && x.ambito !== state.ambito)) continue;
+    const c = m.categoria || 'Sin categoría'; by[c] = (by[c] || 0) + x.gas;
+    if (m.subcategoria) { subs[c] = subs[c] || {}; subs[c][m.subcategoria] = (subs[c][m.subcategoria] || 0) + x.gas; }
   }
-  const rows = Object.entries(by).sort((a, b) => b[1] - a[1]);
+  const rows = Object.entries(by).filter(r => r[1] > 0.5).sort((a, b) => b[1] - a[1]);
   const total = rows.reduce((a, r) => a + r[1], 0), max = rows.length ? rows[0][1] : 1;
   const el = document.getElementById('catList');
   if (!rows.length) { el.innerHTML = '<div class="empty">Sin gastos en este periodo</div>'; return; }
   el.innerHTML = rows.map(([c, v]) => {
-    const sub = subs[c] ? Object.entries(subs[c]).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s, x]) => `${esc(s)} ${eur(x)}`).join(' · ') : '';
+    const sub = subs[c] ? Object.entries(subs[c]).filter(e => e[1] > 0.5).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s, x]) => `${esc(s)} ${eur(x)}`).join(' · ') : '';
     return `<div class="cat-row" data-cat="${esc(c)}"><div>${esc(c)}</div><div class="cat-val">${eur(v)}<small>${Math.round(v / total * 100)}%</small></div>${sub ? `<div class="cat-sub">${sub}</div>` : ''}<div class="bar"><div style="width:${v / max * 100}%"></div></div></div>`;
   }).join('');
   el.querySelectorAll('.cat-row').forEach(r => r.addEventListener('click', () => { document.getElementById('fCat').value = r.dataset.cat; irTab('movs'); }));
@@ -556,7 +568,7 @@ function catList(movs) {
 
 function splitCard(movs) {
   const g = { personal: 0, profesional: 0, alquiler: 0 };
-  for (const m of movs) if (m.importe < 0 && m.ambito in g) g[m.ambito] -= m.importe;
+  for (const m of movs) for (const x of partes(m)) if (x.ambito in g) g[x.ambito] += x.gas;
   const t = g.personal + g.profesional + g.alquiler, el = document.getElementById('splitCard');
   if (!t) { el.innerHTML = '<div class="empty">Sin gastos en este periodo</div>'; return; }
   const seg = [['personal', 'Personal', 'var(--s1)'], ['profesional', 'Profesional', 'var(--s3)'], ['alquiler', 'Casa alquilada', 'var(--s4)']].filter(([k]) => g[k]);
@@ -589,7 +601,7 @@ function renderMovs() {
   for (const m of movs) {
     if (m.fecha !== last) { html += `<div class="mov-group">${parseF(m.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</div>`; last = m.fecha; }
     html += `<div class="mov" data-id="${esc(m.id)}"><div class="mov-concepto">${esc(m.concepto)}</div><div class="mov-imp ${m.importe >= 0 ? 'up' : ''}">${m.importe >= 0 ? '+' : ''}${eur2(m.importe)}</div>
-      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(AMBITOS[m.ambito] || m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
+      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(AMBITOS[m.ambito] || m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.compartido ? ` · ${m.compartido} % ${esc(m.ambito)}` : ''}${m.reembolso ? ' · resta del gasto' : ''}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
       <div class="mov-saldo">${m.saldo != null ? 'saldo ' + eur2(m.saldo) : ''}</div></div>`;
   }
   const t = totales(movs);
@@ -653,15 +665,15 @@ function calcTrimestre(y, q) {
   const base = em.reduce((a, f) => a + f.base, 0);
   const ivaRep = em.reduce((a, f) => a + facturaCalc(f).iva, 0);
   const ret = em.reduce((a, f) => a + facturaCalc(f).irpf, 0);
-  const ded = r => (r.deduciblePct ?? 100) / 100;
+  const ded = r => (r.deduciblePct ?? 100) / 100, dedIrpf = r => (r.deducibleIrpfPct ?? r.deduciblePct ?? 100) / 100;
   const ivaSop = rec.reduce((a, r) => a + r.iva * ded(r), 0);
-  const gastosRec = rec.reduce((a, r) => a + r.base * ded(r), 0);
+  const gastosRec = rec.reduce((a, r) => a + r.base * dedIrpf(r), 0);
   const cuotas = DATA.movimientos.filter(m => m.fecha >= ini && m.fecha <= fin && m.subcategoria === 'Cuota autónomos' && m.importe < 0).reduce((a, m) => a - m.importe, 0);
   // acumulados desde el 1 de enero (el 130 es acumulativo)
   const emAc = validas().filter(f => f.fecha >= ini0 && f.fecha <= fin);
   const ingAc = emAc.reduce((a, f) => a + f.base, 0);
   const retAc = emAc.reduce((a, f) => a + facturaCalc(f).irpf, 0);
-  const gasAc = DATA.recibidas.filter(r => r.fecha >= ini0 && r.fecha <= fin).reduce((a, r) => a + r.base * ded(r), 0)
+  const gasAc = DATA.recibidas.filter(r => r.fecha >= ini0 && r.fecha <= fin).reduce((a, r) => a + r.base * dedIrpf(r), 0)
     + DATA.movimientos.filter(m => m.fecha >= ini0 && m.fecha <= fin && m.subcategoria === 'Cuota autónomos' && m.importe < 0).reduce((a, m) => a - m.importe, 0);
   let previos = 0; for (let k = 1; k < q; k++) previos += calcTrimestre(y, k).m130;
   const rendAc = ingAc - gasAc;
@@ -730,7 +742,7 @@ function renderAutonomo() {
   // gastos con factura
   const rl = document.getElementById('recList');
   rl.innerHTML = c.rec.length ? c.rec.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(r => `<div class="mov" data-rid="${esc(r.id)}"><div class="mov-concepto">${esc(r.concepto)} · ${esc(r.proveedor)}</div><div class="mov-imp">${eur2(r.base + r.iva)}</div>
-      <div class="mov-meta">${fCorta(r.fecha)} · ${esc(r.categoria || '')}${(r.deduciblePct ?? 100) < 100 ? ` · deducible ${r.deduciblePct}%` : ''}</div><div class="mov-saldo">IVA ${eur2(r.iva)}</div></div>`).join('')
+      <div class="mov-meta">${fCorta(r.fecha)} · ${esc(r.categoria || '')}${(r.deduciblePct ?? 100) < 100 || r.deducibleIrpfPct != null ? ` · IVA ${r.deduciblePct ?? 100}% / IRPF ${r.deducibleIrpfPct ?? r.deduciblePct ?? 100}%` : ''}</div><div class="mov-saldo">IVA ${eur2(r.iva)}</div></div>`).join('')
     + `<p class="hint" style="margin-top:8px">Total base ${eur2(c.rec.reduce((a, r) => a + r.base, 0))}. La cuota de autónomos (${eur2(c.cuotas)} este trimestre) se toma de los movimientos del banco.</p>`
     : '<div class="empty">No hay gastos con factura en este trimestre</div>';
   rl.querySelectorAll('[data-rid]').forEach(r => r.addEventListener('click', () => formRecibida(DATA.recibidas.find(x => x.id === r.dataset.rid))));
@@ -817,13 +829,14 @@ function formRecibida(r) {
       { name: 'concepto', label: 'Concepto', type: 'text', value: r.concepto || '', full: true },
       { name: 'base', label: 'Base (€)', type: 'number', value: r.base },
       { name: 'iva', label: 'IVA (€)', type: 'number', value: r.iva },
-      { name: 'deduciblePct', label: '% deducible (uso profesional)', type: 'number', value: r.deduciblePct ?? 100, full: true },
+      { name: 'deduciblePct', label: '% deducible IVA', type: 'number', value: r.deduciblePct ?? 100 },
+      { name: 'deducibleIrpfPct', label: '% deducible IRPF', type: 'number', value: r.deducibleIrpfPct ?? r.deduciblePct ?? 100 },
     ],
     resumen: form => `Total ticket ${eur2((+form.elements.base.value || 0) + (+form.elements.iva.value || 0))}`,
     alCambiar(form, campo) { if (campo === 'base' && !form.elements.iva.dataset.tocado) form.elements.iva.value = r2((+form.elements.base.value || 0) * 0.21); if (campo === 'iva') form.elements.iva.dataset.tocado = '1'; },
     guardar(v) {
       if (!(+v.base)) return 'Falta la base.';
-      const obj = { ...r, ...v, id: r.id || nuevoId('r'), base: +v.base, iva: +v.iva || 0, deduciblePct: Math.min(100, Math.max(0, +v.deduciblePct || 0)) };
+      const obj = { ...r, ...v, id: r.id || nuevoId('r'), base: +v.base, iva: +v.iva || 0, deduciblePct: Math.min(100, Math.max(0, +v.deduciblePct || 0)), deducibleIrpfPct: Math.min(100, Math.max(0, +v.deducibleIrpfPct || 0)) };
       if (nueva) DATA.recibidas.push(obj); else Object.assign(r, obj);
     },
     borrar: nueva ? null : () => { DATA.recibidas = DATA.recibidas.filter(x => x !== r); },
