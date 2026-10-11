@@ -20,7 +20,7 @@
     --accent: #c8f55a; --text: #f0f0f0; --text-2: #c3c2b7; --muted: #888;
     --grid: #2e2e2e;
     /* Series (paleta validada para fondo oscuro) */
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
     --good: #5bd17a; --bad: #ff6b6b; --warn: #ffb347;
   }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding-bottom: 84px; min-height: 100vh; overflow-x: hidden; font-variant-numeric: tabular-nums; }
@@ -329,7 +329,8 @@
 const STORE_KEY = 'finanzas-datos-v1';
 const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const MESES_L = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const ACC_COLORS = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)'];
+const ACC_COLORS = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'];
+const CUENTAS_AHORRO = ['hucha', 'trade'];
 const CUENTAS_DEFECTO = [
   { id: 'gastos', nombre: 'Gastos', descripcion: 'Día a día y recibos' },
   { id: 'cobros', nombre: 'Cobros', descripcion: 'Donde entran los pagos' },
@@ -369,7 +370,7 @@ function cargarGuardados() {
 function normalizar(d) {
   d.cuentas = d.cuentas && d.cuentas.length ? d.cuentas : CUENTAS_DEFECTO;
   for (const k of ['movimientos', 'facturas', 'recibidas', 'metas']) d[k] = Array.isArray(d[k]) ? d[k] : [];
-  d.config = Object.assign({ mesesFondo: 6, pctHucha: 10, extraIrpf: 5, pctInteres: 50, reduccionAlquiler: 50, amortizacionCasa: 0, reduccionInicio: 0, paroBruto: 0, retParo: 0, paroSS: 0 }, d.config || {});
+  d.config = Object.assign({ reservaRenta: 0, mesesFondo: 6, pctHucha: 10, extraIrpf: 5, pctInteres: 50, reduccionAlquiler: 50, amortizacionCasa: 0, reduccionInicio: 0, paroBruto: 0, retParo: 0, paroSS: 0 }, d.config || {});
   return d;
 }
 let DATA = normalizar(cargarGuardados() || structuredClone(window.FINANZAS_DEMO || {}));
@@ -542,7 +543,7 @@ function renderResumen() {
 function renderSalud(t) {
   const m = medias(), el = document.getElementById('saludCard');
   if (!m.meses) { el.innerHTML = '<div class="empty">Sin datos todavía</div>'; return; }
-  const hucha = saldoA('hucha', ultimaFecha());
+  const hucha = ahorro().colchon;
   const cubiertos = m.costeVida && hucha != null ? hucha / m.costeVida : null;
   const minimo = Math.max(0, m.costeVida + m.gastoProf - Math.max(0, m.alquilerNeto)) / 0.8;
   // Estado del periodo (como en tu hoja: peligroso si resultado < 0, justo si no cubre un mes de vida)
@@ -645,16 +646,21 @@ function saldoA(cuenta, fecha) {
   for (const m of DATA.movimientos) if (m.cuenta === cuenta && m.fecha <= fecha && m.saldo != null && m.fecha >= f) { s = m.saldo; f = m.fecha; }
   return s;
 }
+function ahorro() {
+  const u = ultimaFecha(), total = CUENTAS_AHORRO.reduce((a, id) => a + (saldoA(id, u) ?? 0), 0);
+  const reserva = Math.min(total, DATA.config.reservaRenta || 0);
+  return { total, reserva, colchon: total - reserva };
+}
 function renderCuentas() {
   const p = periodo(), hoy = ultimaFecha();
   const fin = p.fin < hoy ? p.fin : hoy;
   const dIni = parseF(p.ini); dIni.setDate(dIni.getDate() - 1); const antes = iso(dIni);
   document.getElementById('accGrid').innerHTML = DATA.cuentas.map((c, i) => {
     const s = saldoA(c.id, fin), s0 = saldoA(c.id, antes), v = s != null && s0 != null ? s - s0 : null;
-    return `<div class="acc" style="--c:${ACC_COLORS[i % 4]}"><div class="acc-name">${esc(c.nombre)}</div><div class="acc-desc">${esc(c.descripcion || '')}</div>
+    return `<div class="acc" style="--c:${ACC_COLORS[i % ACC_COLORS.length]}"><div class="acc-name">${esc(c.nombre)}</div><div class="acc-desc">${esc(c.descripcion || '')}</div>
       <div class="acc-saldo">${s != null ? eur(s) : '—'}</div><div class="acc-var ${v == null ? '' : v >= 0 ? 'up' : 'down'}">${v == null ? 'sin datos' : (v >= 0 ? '+' : '') + eur(v) + ' en el periodo'}</div></div>`;
   }).join('');
-  document.getElementById('accLegend').innerHTML = DATA.cuentas.map((c, i) => `<span><i style="background:${ACC_COLORS[i % 4]}"></i>${esc(c.nombre)}</span>`).join('');
+  document.getElementById('accLegend').innerHTML = DATA.cuentas.map((c, i) => `<span><i style="background:${ACC_COLORS[i % ACC_COLORS.length]}"></i>${esc(c.nombre)}</span>`).join('');
   let ini = p.ini;
   if (state.mode === 'mes') { const d = parseF(p.fin); ini = iso(new Date(d.getFullYear(), d.getMonth() - 5, 1)); }
   const dias = []; for (let d = parseF(ini); iso(d) <= fin; d.setDate(d.getDate() + 1)) dias.push(iso(d));
@@ -923,15 +929,17 @@ function formRecibida(r) {
 function renderAhorro() {
   renderCuentas();
   const m = medias(), cfg = DATA.config;
-  const hucha = saldoA('hucha', ultimaFecha()) ?? 0;
+  const ah = ahorro(), hucha = ah.colchon;
   const objetivo = m.costeVida * cfg.mesesFondo, pct = objetivo ? Math.min(1, hucha / objetivo) : 0;
   document.getElementById('fondoCard').innerHTML = `
-    <div class="rows"><div><span>Objetivo (${cfg.mesesFondo} meses × ${eur(m.costeVida)})</span><b>${eur(objetivo)}</b></div><div><span>En la hucha</span><b>${eur(hucha)}</b></div></div>
+    <div class="rows"><div><span>Objetivo (${cfg.mesesFondo} meses × ${eur(m.costeVida)})</span><b>${eur(objetivo)}</b></div><div><span>Ahorro (hucha + cuenta remunerada)</span><b>${eur(ah.total)}</b></div>${ah.reserva ? `<div><span>Reservado para la Renta</span><b>−${eur(ah.reserva)}</b></div>` : ''}<div class="total"><span>Colchón disponible</span><b>${eur(hucha)}</b></div></div>
     <div class="bar big good"><div style="width:${pct * 100}%"></div></div>
     <div class="hint">${pct >= 1 ? '✅ Fondo completo. A partir de aquí, lo que ahorres puede ir a inversión.' : `Te faltan <b>${eur(objetivo - hucha)}</b>. Prioriza llenarlo antes de invertir: como autónomo tus ingresos varían y es tu red de seguridad.`}</div>
     <div class="calc" style="margin-top:10px"><label>Meses de colchón<select id="cfgMeses">${[3, 4, 6, 9, 12].map(n => `<option ${n === cfg.mesesFondo ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-    <label>% de cada cobro a la hucha<input id="cfgHucha" type="number" inputmode="numeric" value="${cfg.pctHucha}"></label></div>`;
+    <label>% de cada cobro a la hucha<input id="cfgHucha" type="number" inputmode="numeric" value="${cfg.pctHucha}"></label>
+    <label class="full" style="grid-column:1/-1">Reserva para la Renta guardada en el ahorro (€)<input id="cfgReserva" type="number" inputmode="numeric" value="${cfg.reservaRenta || 0}"></label></div>`;
   document.getElementById('cfgMeses').onchange = e => { cfg.mesesFondo = +e.target.value; guardar(); renderAhorro(); };
+  document.getElementById('cfgReserva').onchange = e => { cfg.reservaRenta = Math.max(0, +e.target.value || 0); guardar(); renderAhorro(); };
   document.getElementById('cfgHucha').onchange = e => { cfg.pctHucha = Math.max(0, Math.min(100, +e.target.value || 0)); guardar(); renderReparto(); };
   renderReparto(); renderMetas(); renderSim(); renderEstrategia(m, hucha, objetivo);
 }
