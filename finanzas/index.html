@@ -369,7 +369,7 @@ function cargarGuardados() {
 function normalizar(d) {
   d.cuentas = d.cuentas && d.cuentas.length ? d.cuentas : CUENTAS_DEFECTO;
   for (const k of ['movimientos', 'facturas', 'recibidas', 'metas']) d[k] = Array.isArray(d[k]) ? d[k] : [];
-  d.config = Object.assign({ mesesFondo: 6, pctHucha: 10, extraIrpf: 5, pctInteres: 30, reduccionAlquiler: 50, tipoMarginal: 30 }, d.config || {});
+  d.config = Object.assign({ mesesFondo: 6, pctHucha: 10, extraIrpf: 5, pctInteres: 50, reduccionAlquiler: 50, amortizacionCasa: 0, reduccionInicio: 0, paroBruto: 0, retParo: 0, paroSS: 0 }, d.config || {});
   return d;
 }
 let DATA = normalizar(cargarGuardados() || structuredClone(window.FINANZAS_DEMO || {}));
@@ -768,63 +768,94 @@ function renderAutonomo() {
     ${fila('Retenciones', t => t.ret)}${fila('IVA (303)', t => t.m303)}${fila('IRPF (130)', t => t.m130)}</table>`;
 }
 
+// ---------- Renta anual (IRPF) ----------
+// Escalas 2025 (general): estatal y Cataluña. Calibradas con las Rentas 2024 y 2025 de Llorenç.
+const ESCALA_ESTATAL = [[12450, 9.5], [20200, 12], [35200, 15], [60000, 18.5], [300000, 22.5], [Infinity, 24.5]];
+const ESCALA_CATALUNA = [[12450, 9.5], [17707.2, 12], [21000, 14], [33007.2, 15], [53407.2, 18.8], [90000, 21.5], [120000, 23.5], [175000, 24.5], [Infinity, 25.5]];
+const MINIMO_PERSONAL = 5550;
+function escala(base, tramos) {
+  let c = 0, prev = 0;
+  for (const [hasta, pct] of tramos) { if (base <= prev) break; c += (Math.min(base, hasta) - prev) * pct / 100; prev = hasta; }
+  return c;
+}
+const cuotaIRPF = base => Math.max(0, escala(base, ESCALA_ESTATAL) - escala(MINIMO_PERSONAL, ESCALA_ESTATAL)) + Math.max(0, escala(base, ESCALA_CATALUNA) - escala(MINIMO_PERSONAL, ESCALA_CATALUNA));
+
 function calcAlquiler(y) {
   const movs = DATA.movimientos.filter(m => m.ambito === 'alquiler' && m.fecha.startsWith(String(y))), cfg = DATA.config;
   const ing = movs.filter(m => m.importe > 0).reduce((a, m) => a + m.importe, 0);
   const hip = movs.filter(m => m.importe < 0 && m.subcategoria === 'Hipoteca').reduce((a, m) => a - m.importe, 0);
   const otros = movs.filter(m => m.importe < 0 && m.subcategoria !== 'Hipoteca').reduce((a, m) => a - m.importe, 0);
-  const interes = hip * cfg.pctInteres / 100;
-  const neto = ing - interes - otros, base = Math.max(0, neto) * (1 - cfg.reduccionAlquiler / 100), reserva = base * cfg.tipoMarginal / 100;
-  return { movs, ing, hip, otros, interes, neto, base, reserva, meses: new Set(movs.map(m => ym(m.fecha))).size || 1 };
+  // Los intereses y reparaciones no pueden superar los ingresos (el exceso pasa a años siguientes)
+  const interes = Math.min(hip * cfg.pctInteres / 100, ing);
+  const amort = cfg.amortizacionCasa || 0;
+  const neto = ing - interes - otros - amort;
+  const base = neto > 0 ? neto * (1 - cfg.reduccionAlquiler / 100) : neto;
+  return { movs, ing, hip, otros, interes, amort, neto, base, meses: new Set(movs.map(m => ym(m.fecha))).size || 1 };
+}
+function calcRenta(y) {
+  const cfg = DATA.config, enAno = m => m.fecha.startsWith(String(y));
+  // Trabajo: paro (el banco muestra el neto; si hay certificado del SEPE, mejor usar el bruto)
+  const paro = DATA.movimientos.filter(m => enAno(m) && m.importe > 0 && m.subcategoria === 'Prestación desempleo' && !(m.nota || '').startsWith('⚠')).reduce((a, m) => a + m.importe, 0);
+  const paroBruto = cfg.paroBruto || paro;
+  const trabajo = paroBruto > 0 ? Math.max(0, paroBruto - (cfg.paroSS || 0) - 2000) : 0;
+  // Actividad (estimación directa simplificada)
+  const qs = [1, 2, 3, 4].map(q => calcTrimestre(y, q));
+  const facturado = qs.reduce((a, t) => a + t.base, 0), gastos = qs.reduce((a, t) => a + t.gastos, 0), ret = qs.reduce((a, t) => a + t.ret, 0);
+  const previo = facturado - gastos, dificil = previo > 0 ? Math.min(2000, previo * 0.05) : 0;
+  const actNeto = previo - dificil, redInicio = actNeto > 0 ? actNeto * (cfg.reduccionInicio || 0) / 100 : 0, actividad = actNeto - redInicio;
+  const pag130 = DATA.movimientos.filter(m => enAno(m) && m.importe < 0 && /130/.test(m.concepto) && /MOD|I\.R\.P\.F|IRPF/i.test(m.concepto)).reduce((a, m) => a - m.importe, 0);
+  const alq = calcAlquiler(y);
+  const base = Math.max(0, trabajo + actividad + alq.base);
+  const cuota = cuotaIRPF(base);
+  const pagado = ret + pag130 + (cfg.retParo || 0);
+  return { paro, paroBruto, trabajo, facturado, gastos, dificil, redInicio, actividad, ret, pag130, alq, base, cuota, pagado, resultado: cuota - pagado };
 }
 function renderAlquilerFiscal(y) {
   const el = document.getElementById('alqCard'), cfg = DATA.config;
-  const { movs, ing, hip, otros, interes, neto, base, reserva, meses } = calcAlquiler(y);
+  const { movs, ing, hip, otros, interes, amort, neto, base, meses } = calcAlquiler(y);
   if (!movs.length) { el.innerHTML = '<div class="empty">Sin movimientos del alquiler este año</div>'; return; }
   el.innerHTML = `<div class="rows">
     <div><span>Alquileres cobrados en ${y}</span><b>${eur(ing)}</b></div>
     <div><span>Intereses de la hipoteca (≈${cfg.pctInteres} % de las cuotas, ${eur(hip)})</span><b>−${eur(interes)}</b></div>
-    <div><span>Otros gastos de la casa (IBI, seguro, comunidad…)</span><b>−${eur(otros)}</b></div>
-    <div><span>Rendimiento neto (sin amortización)</span><b>${eur(neto)}</b></div>
-    <div><span>Tras reducción del ${cfg.reduccionAlquiler} %</span><b>${eur(base)}</b></div>
-    <div class="total"><span>Reserva para la Renta (al ${cfg.tipoMarginal} %)</span><b class="warn">${eur(reserva)}</b></div>
+    <div><span>Otros gastos de la casa (seguro, IBI, comunidad…)</span><b>−${eur(otros)}</b></div>
+    <div><span>Amortización de la casa</span><b>−${eur(amort)}</b></div>
+    <div><span>Rendimiento neto</span><b>${eur(neto)}</b></div>
+    <div class="total"><span>Tributa (tras reducción del ${cfg.reduccionAlquiler} %)</span><b>${eur(base)}</b></div>
   </div>
-  <p class="hint" style="margin-top:8px">Unos <b>${eur(reserva / meses)}/mes</b>. Los alquileres no llevan retención, así que este IRPF se paga entero en la Renta de junio. Solo desgravan los <b>intereses</b> de la hipoteca (no el capital) y además puedes deducir la amortización (3 % del valor de construcción), que reduce bastante el rendimiento: pide el dato del catastro y lo afinamos.</p>
+  <p class="hint" style="margin-top:8px">Los alquileres no llevan retención: lo que tributan se paga en la Renta. En tu Renta 2025 la amortización fue de 2.476 € y la reducción del 60 % (contrato de 2019); los contratos firmados desde mayo de 2023 suelen tener un 50 %.</p>
   <div class="calc" style="margin-top:10px">
-    <label>% intereses en la cuota<input id="cfgInt" type="number" value="${cfg.pctInteres}"></label>
+    <label>% de intereses en la cuota<input id="cfgInt" type="number" value="${cfg.pctInteres}"></label>
     <label>Reducción por vivienda %<input id="cfgRed" type="number" value="${cfg.reduccionAlquiler}"></label>
-    <label class="full" style="grid-column:1/-1">Tipo marginal estimado de IRPF %<input id="cfgMarg" type="number" value="${cfg.tipoMarginal}"></label>
+    <label class="full" style="grid-column:1/-1">Amortización anual de la casa (€)<input id="cfgAmort" type="number" value="${amort}"></label>
   </div>`;
-  const bind = (id, k) => document.getElementById(id).onchange = e => { cfg[k] = Math.max(0, Math.min(100, +e.target.value || 0)); guardar(); renderAlquilerFiscal(y); };
-  bind('cfgInt', 'pctInteres'); bind('cfgRed', 'reduccionAlquiler'); bind('cfgMarg', 'tipoMarginal');
+  const bind = (id, k, max) => document.getElementById(id).onchange = e => { cfg[k] = Math.max(0, Math.min(max, +e.target.value || 0)); guardar(); renderAlquilerFiscal(y); renderRenta(y); };
+  bind('cfgInt', 'pctInteres', 100); bind('cfgRed', 'reduccionAlquiler', 100); bind('cfgAmort', 'amortizacionCasa', 1e6);
 }
 function renderRenta(y) {
-  const cfg = DATA.config, enAno = m => m.fecha.startsWith(String(y));
+  const cfg = DATA.config, r = calcRenta(y);
   document.getElementById('rentaTitulo').textContent = `Renta ${y} · se declara en junio de ${y + 1}`;
-  // Actividad (autónomo)
-  const qs = [1, 2, 3, 4].map(q => calcTrimestre(y, q));
-  const facturado = qs.reduce((a, t) => a + t.base, 0), gastos = qs.reduce((a, t) => a + t.gastos, 0), ret = qs.reduce((a, t) => a + t.ret, 0);
-  const pag130 = DATA.movimientos.filter(m => enAno(m) && m.importe < 0 && /130/.test(m.concepto) && /MOD|I\.R\.P\.F|IRPF/i.test(m.concepto)).reduce((a, m) => a - m.importe, 0);
-  const extraAct = facturado * cfg.extraIrpf / 100;
-  // Paro
-  const paro = DATA.movimientos.filter(m => enAno(m) && m.importe > 0 && m.subcategoria === 'Prestación desempleo' && !(m.nota || '').startsWith('⚠'));
-  const paroTot = paro.reduce((a, m) => a + m.importe, 0);
-  // Alquiler
-  const alq = calcAlquiler(y);
-  const total = alq.reserva + extraAct;
+  const res = r.resultado;
   document.getElementById('rentaCard').innerHTML = `<div class="rows">
-    <div><span>💼 Actividad: rendimiento (facturado ${eur(facturado)} − gastos ${eur(gastos)})</span><b>${eur(facturado - gastos)}</b></div>
-    <div><span>&nbsp;&nbsp;&nbsp;ya pagado: retenciones de tus clientes${pag130 ? ' + modelos 130' : ''}</span><b>−${eur(ret + pag130)}</b></div>
-    <div><span>🏡 Alquiler de la casa: base tras reducción</span><b>${eur(alq.base)}</b></div>
-    <div><span>&nbsp;&nbsp;&nbsp;ya pagado</span><b>0 €</b></div>
-    <div><span>🪪 Paro cobrado (neto, con retención del SEPE)</span><b>${eur(paroTot)}</b></div>
-    <div class="total"><span>Reserva recomendada para junio</span><b class="warn">${eur(total)}</b></div>
+    <div><span>🪪 Trabajo (paro${cfg.paroBruto ? ' bruto' : ', neto del banco'} − gastos)</span><b>${eur(r.trabajo)}</b></div>
+    <div><span>💼 Actividad: ${eur(r.facturado)} facturado − ${eur(r.gastos)} gastos − ${eur(r.dificil)} difícil justificación${r.redInicio ? ` − ${eur(r.redInicio)} inicio de actividad` : ''}</span><b>${eur(r.actividad)}</b></div>
+    <div><span>🏡 Alquiler de la casa (lo que tributa)</span><b>${eur(r.alq.base)}</b></div>
+    <div><span>Base imponible</span><b>${eur(r.base)}</b></div>
+    <div><span>Impuesto (escala estatal + Cataluña, menos mínimo personal)</span><b>${eur(r.cuota)}</b></div>
+    <div><span>Ya pagado: retenciones de clientes${r.pag130 ? ' + modelos 130' : ''}${cfg.retParo ? ' + retenciones del paro' : ''}</span><b>−${eur(r.pagado)}</b></div>
+    <div class="total"><span>${res >= 0 ? 'Previsión: a pagar en junio' : 'Previsión: a devolver'}</span><b class="${res >= 0 ? 'warn' : 'up'}">${eur(Math.abs(res))}</b></div>
   </div>
-  <p class="hint" style="margin-top:8px">La reserva suma lo del alquiler (${eur(alq.reserva)}, sin retención) y un ${cfg.extraIrpf} % extra de lo facturado (${eur(extraAct)}), porque el 15 % que te retienen los clientes suele quedarse corto al juntarlo con el alquiler y el paro. Es una estimación: la cifra real depende de los tramos y deducciones, y la calcula Gatefi con tus certificados.</p>`;
-  document.getElementById('paroCard').innerHTML = paro.length ? `<div class="rows">
-    <div><span>Cobrado en ${y} (${paro.length} pagos)</span><b>${eur(paroTot)}</b></div>
-    <div><span>Media mensual</span><b>${eur(paroTot / new Set(paro.map(m => ym(m.fecha))).size)}</b></div>
-  </div><p class="hint" style="margin-top:8px">El paro tributa en la Renta como rendimiento del trabajo. El SEPE ya te retiene IRPF (el banco solo muestra lo neto). Descarga el <b>certificado de retenciones</b> en la sede del SEPE y dáselo a Gatefi.</p>`
+  <p class="hint" style="margin-top:8px">Estimación con lo registrado hasta hoy: si facturas más en lo que queda de año, sube. No incluye deducciones (donativos…). La cifra exacta la calcula Gatefi con tus certificados.</p>
+  <div class="calc" style="margin-top:10px">
+    <label>Paro bruto anual (€, certificado SEPE)<input id="cfgParoB" type="number" value="${cfg.paroBruto || ''}" placeholder="${Math.round(r.paro)}"></label>
+    <label>Retenciones del paro (€)<input id="cfgRetParo" type="number" value="${cfg.retParo || ''}" placeholder="0"></label>
+    <label>Cotización SS del paro (€)<input id="cfgParoSS" type="number" value="${cfg.paroSS || ''}" placeholder="0"></label>
+    <label>Reducción inicio de actividad %<input id="cfgIni" type="number" value="${cfg.reduccionInicio || 0}"></label>
+  </div>`;
+  const bind = (id, k) => document.getElementById(id).onchange = e => { cfg[k] = Math.max(0, +e.target.value || 0); guardar(); renderRenta(y); };
+  bind('cfgParoB', 'paroBruto'); bind('cfgRetParo', 'retParo'); bind('cfgParoSS', 'paroSS'); bind('cfgIni', 'reduccionInicio');
+  document.getElementById('paroCard').innerHTML = r.paro ? `<div class="rows">
+    <div><span>Paro cobrado en ${y} (neto, según el banco)</span><b>${eur(r.paro)}</b></div>
+  </div><p class="hint" style="margin-top:8px">El paro tributa como rendimiento del trabajo. Descarga el <b>certificado de retenciones</b> en la sede del SEPE y pon arriba el bruto, las retenciones y la cotización: así la previsión de la Renta será exacta.</p>`
     : '<div class="empty">Sin pagos de paro este año</div>';
 }
 function siguienteNumero(fecha) {
