@@ -214,6 +214,7 @@
 
 <!-- AUTÓNOMO -->
 <section class="tab" id="tab-auto">
+  <h2 style="margin-top:18px;color:var(--accent)">Trimestrales · autónomo</h2>
   <div id="autoTop"></div>
   <h2>Facturas emitidas <button class="add" id="addFactura">+ Nueva</button></h2>
   <div class="card" id="factList"></div>
@@ -222,9 +223,15 @@
   <div class="card" id="recList"></div>
   <h2>Resumen del año</h2>
   <div class="card" id="anualCard"></div>
-  <h2>Alquiler de la casa · Renta</h2>
-  <div class="card" id="alqCard"></div>
+
   <p class="hint" style="margin-top:10px">Estimación orientativa (estimación directa simplificada, sin el 5 % de gastos de difícil justificación). Revisa siempre los importes antes de presentar.</p>
+
+  <h2 style="margin-top:34px;color:var(--accent)" id="rentaTitulo">Renta anual</h2>
+  <div class="card" id="rentaCard"></div>
+  <h2>Alquiler de la casa</h2>
+  <div class="card" id="alqCard"></div>
+  <h2>Paro</h2>
+  <div class="card" id="paroCard"></div>
 </section>
 
 <!-- AHORRO -->
@@ -308,7 +315,7 @@
 <nav class="bottom-nav">
   <button class="nav-btn active" data-tab="resumen"><span class="nav-icon">📊</span><span class="nav-label">Resumen</span></button>
   <button class="nav-btn" data-tab="movs"><span class="nav-icon">📄</span><span class="nav-label">Movimientos</span></button>
-  <button class="nav-btn" data-tab="auto"><span class="nav-icon">💼</span><span class="nav-label">Autónomo</span></button>
+  <button class="nav-btn" data-tab="auto"><span class="nav-icon">🧾</span><span class="nav-label">Impuestos</span></button>
   <button class="nav-btn" data-tab="ahorro"><span class="nav-icon">🐷</span><span class="nav-label">Ahorro</span></button>
   <button class="nav-btn" data-tab="datos"><span class="nav-icon">⚙️</span><span class="nav-label">Datos</span></button>
 </nav>
@@ -721,7 +728,7 @@ function renderAutonomo() {
     </div>
     <p class="hint" style="margin-top:6px">${c.ingAc ? `El <b>${Math.round(c.pctRet * 100)} %</b> de tus ingresos de este año lleva retención. ` : ''}Si el año pasado más del 70 % de tus ingresos llevaron retención, no estás obligado a presentar el 130 (pero conviene seguir apartando para la Renta).</p></div>`;
 
-  renderAlquilerFiscal(y);
+  renderAlquilerFiscal(y); renderRenta(y);
   // facturas emitidas
   const fl = document.getElementById('factList');
   fl.innerHTML = c.em.length || DATA.facturas.some(f => f.estado === 'anulada' && f.fecha >= c.ini && f.fecha <= c.fin)
@@ -755,16 +762,19 @@ function renderAutonomo() {
     ${fila('Retenciones', t => t.ret)}${fila('IVA (303)', t => t.m303)}${fila('IRPF (130)', t => t.m130)}</table>`;
 }
 
-function renderAlquilerFiscal(y) {
-  const movs = DATA.movimientos.filter(m => m.ambito === 'alquiler' && m.fecha.startsWith(String(y)));
-  const el = document.getElementById('alqCard'), cfg = DATA.config;
-  if (!movs.length) { el.innerHTML = '<div class="empty">Sin movimientos del alquiler este año</div>'; return; }
+function calcAlquiler(y) {
+  const movs = DATA.movimientos.filter(m => m.ambito === 'alquiler' && m.fecha.startsWith(String(y))), cfg = DATA.config;
   const ing = movs.filter(m => m.importe > 0).reduce((a, m) => a + m.importe, 0);
   const hip = movs.filter(m => m.importe < 0 && m.subcategoria === 'Hipoteca').reduce((a, m) => a - m.importe, 0);
   const otros = movs.filter(m => m.importe < 0 && m.subcategoria !== 'Hipoteca').reduce((a, m) => a - m.importe, 0);
   const interes = hip * cfg.pctInteres / 100;
   const neto = ing - interes - otros, base = Math.max(0, neto) * (1 - cfg.reduccionAlquiler / 100), reserva = base * cfg.tipoMarginal / 100;
-  const meses = new Set(movs.map(m => ym(m.fecha))).size || 1;
+  return { movs, ing, hip, otros, interes, neto, base, reserva, meses: new Set(movs.map(m => ym(m.fecha))).size || 1 };
+}
+function renderAlquilerFiscal(y) {
+  const el = document.getElementById('alqCard'), cfg = DATA.config;
+  const { movs, ing, hip, otros, interes, neto, base, reserva, meses } = calcAlquiler(y);
+  if (!movs.length) { el.innerHTML = '<div class="empty">Sin movimientos del alquiler este año</div>'; return; }
   el.innerHTML = `<div class="rows">
     <div><span>Alquileres cobrados en ${y}</span><b>${eur(ing)}</b></div>
     <div><span>Intereses de la hipoteca (≈${cfg.pctInteres} % de las cuotas, ${eur(hip)})</span><b>−${eur(interes)}</b></div>
@@ -781,6 +791,35 @@ function renderAlquilerFiscal(y) {
   </div>`;
   const bind = (id, k) => document.getElementById(id).onchange = e => { cfg[k] = Math.max(0, Math.min(100, +e.target.value || 0)); guardar(); renderAlquilerFiscal(y); };
   bind('cfgInt', 'pctInteres'); bind('cfgRed', 'reduccionAlquiler'); bind('cfgMarg', 'tipoMarginal');
+}
+function renderRenta(y) {
+  const cfg = DATA.config, enAno = m => m.fecha.startsWith(String(y));
+  document.getElementById('rentaTitulo').textContent = `Renta ${y} · se declara en junio de ${y + 1}`;
+  // Actividad (autónomo)
+  const qs = [1, 2, 3, 4].map(q => calcTrimestre(y, q));
+  const facturado = qs.reduce((a, t) => a + t.base, 0), gastos = qs.reduce((a, t) => a + t.gastos, 0), ret = qs.reduce((a, t) => a + t.ret, 0);
+  const pag130 = DATA.movimientos.filter(m => enAno(m) && m.importe < 0 && /130/.test(m.concepto) && /MOD|I\.R\.P\.F|IRPF/i.test(m.concepto)).reduce((a, m) => a - m.importe, 0);
+  const extraAct = facturado * cfg.extraIrpf / 100;
+  // Paro
+  const paro = DATA.movimientos.filter(m => enAno(m) && m.importe > 0 && m.subcategoria === 'Prestación desempleo' && !(m.nota || '').startsWith('⚠'));
+  const paroTot = paro.reduce((a, m) => a + m.importe, 0);
+  // Alquiler
+  const alq = calcAlquiler(y);
+  const total = alq.reserva + extraAct;
+  document.getElementById('rentaCard').innerHTML = `<div class="rows">
+    <div><span>💼 Actividad: rendimiento (facturado ${eur(facturado)} − gastos ${eur(gastos)})</span><b>${eur(facturado - gastos)}</b></div>
+    <div><span>&nbsp;&nbsp;&nbsp;ya pagado: retenciones de tus clientes${pag130 ? ' + modelos 130' : ''}</span><b>−${eur(ret + pag130)}</b></div>
+    <div><span>🏡 Alquiler de la casa: base tras reducción</span><b>${eur(alq.base)}</b></div>
+    <div><span>&nbsp;&nbsp;&nbsp;ya pagado</span><b>0 €</b></div>
+    <div><span>🪪 Paro cobrado (neto, con retención del SEPE)</span><b>${eur(paroTot)}</b></div>
+    <div class="total"><span>Reserva recomendada para junio</span><b class="warn">${eur(total)}</b></div>
+  </div>
+  <p class="hint" style="margin-top:8px">La reserva suma lo del alquiler (${eur(alq.reserva)}, sin retención) y un ${cfg.extraIrpf} % extra de lo facturado (${eur(extraAct)}), porque el 15 % que te retienen los clientes suele quedarse corto al juntarlo con el alquiler y el paro. Es una estimación: la cifra real depende de los tramos y deducciones, y la calcula Gatefi con tus certificados.</p>`;
+  document.getElementById('paroCard').innerHTML = paro.length ? `<div class="rows">
+    <div><span>Cobrado en ${y} (${paro.length} pagos)</span><b>${eur(paroTot)}</b></div>
+    <div><span>Media mensual</span><b>${eur(paroTot / new Set(paro.map(m => ym(m.fecha))).size)}</b></div>
+  </div><p class="hint" style="margin-top:8px">El paro tributa en la Renta como rendimiento del trabajo. El SEPE ya te retiene IRPF (el banco solo muestra lo neto). Descarga el <b>certificado de retenciones</b> en la sede del SEPE y dáselo a Gatefi.</p>`
+    : '<div class="empty">Sin pagos de paro este año</div>';
 }
 function siguienteNumero(fecha) {
   const y = fecha.slice(0, 4);

@@ -29,9 +29,10 @@ a partir de los extractos bancarios.
 - **Resumen**: ingresos, gastos, resultado, tasa de ahorro, salud financiera (coste de vida medio,
   facturación mínima necesaria, meses cubiertos por la hucha), evolución mensual y gastos por categoría.
 - **Movimientos**: lista filtrable; tocar un movimiento permite reclasificarlo.
-- **Autónomo**: facturas emitidas y gastos con factura, estimación del **303** (IVA) y del **130**
+- **Impuestos** (trimestrales de autónomo + Renta anual): facturas emitidas y gastos con factura, estimación del **303** (IVA) y del **130**
   (IRPF, acumulado desde enero), comparación con el saldo de la cuenta IVA, pendientes de cobro y resumen anual.
   Al abrirla muestra el trimestre que toca presentar (del 1 al 20 del mes siguiente, aún el anterior).
+  Debajo, la Renta anual: actividad, alquiler de la casa (sin retención) y paro, con la reserva recomendada para junio.
 - **Ahorro**: saldos de las cuentas, fondo de emergencia, reparto de cada cobro (IVA → reserva IRPF → hucha → sueldo),
   metas de ahorro, simulador de inversión y estrategia por pasos.
 - **Datos**: importar, copia de seguridad y borrado.
