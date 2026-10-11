@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Finanzas">
+<meta name="robots" content="noindex">
+<title>Mis Finanzas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    color-scheme: dark;
+    --bg: #0f0f0f; --surface: #1a1a1a; --card: #222; --border: #2e2e2e;
+    --accent: #c8f55a; --text: #f0f0f0; --text-2: #c3c2b7; --muted: #888;
+    --grid: #2e2e2e;
+    /* Series (paleta validada para fondo oscuro) */
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --good: #5bd17a; --bad: #ff6b6b; --warn: #ffb347;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Helvetica Neue', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding-bottom: 84px; min-height: 100vh; overflow-x: hidden; font-variant-numeric: tabular-nums; }
+  button, input, select { font-family: inherit; font-size: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  .header { padding: 44px 16px 14px; background: linear-gradient(160deg, #1a1a1a 0%, var(--bg) 100%); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; }
+  .header-label { font-size: 10px; letter-spacing: 3px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+  .header-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; gap: 8px; }
+  .period-nav { display: flex; align-items: center; gap: 6px; }
+  .period-nav button { background: var(--card); border: 1px solid var(--border); border-radius: 10px; width: 34px; height: 34px; font-size: 16px; }
+  .period-title { font-size: 18px; font-weight: 800; white-space: nowrap; }
+  .seg { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 2px; }
+  .seg button { background: none; border: none; padding: 6px 10px; border-radius: 8px; font-size: 12px; color: var(--muted); }
+  .seg button.on { background: var(--accent); color: #000; font-weight: 700; }
+  .chips { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; }
+  .chip { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--text-2); white-space: nowrap; }
+  .chip.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .header.no-ambito .chips { display: none; }
+
+  .demo-banner { margin: 12px 16px 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed var(--s4); color: var(--text-2); font-size: 12px; line-height: 1.4; }
+  .demo-banner b { color: var(--text); }
+
+  .tab { display: none; padding: 0 16px; }
+  .tab.active { display: block; }
+  h2 { font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 22px 0 10px; display: flex; justify-content: space-between; align-items: center; }
+  h2 .add { font-size: 12px; letter-spacing: 0; text-transform: none; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; color: var(--accent); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
+  .card + .card { margin-top: 10px; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.45; }
+  .hint b { color: var(--text-2); }
+
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .kpi-value { font-size: 22px; font-weight: 800; margin-top: 4px; }
+  .kpi-sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+  .up { color: var(--good); } .down { color: var(--bad); } .warn { color: var(--warn); }
+
+  .rows > div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .rows > div:last-child { border-bottom: none; }
+  .rows > div > span:first-child { color: var(--text-2); }
+  .rows > div.total { font-weight: 800; font-size: 15px; }
+  .rows > div.total > span:first-child { color: var(--text); }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  svg text { fill: var(--muted); font-size: 10px; }
+  .chart-wrap { position: relative; }
+  .tooltip { position: fixed; pointer-events: none; background: #000; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 12px; line-height: 1.5; z-index: 200; display: none; max-width: 240px; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+  .tooltip .tt-title { color: var(--muted); font-size: 11px; }
+  .tooltip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+
+  .cat-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+  .cat-row:last-child { border-bottom: none; }
+  .cat-sub { font-size: 11px; color: var(--muted); grid-column: 1 / -1; }
+  .bar { grid-column: 1 / -1; height: 6px; background: var(--card); border-radius: 4px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--s2); border-radius: 0 4px 4px 0; }
+  .bar.big { height: 10px; margin: 10px 0 6px; }
+  .bar.good > div { background: var(--s3); }
+  .cat-val { text-align: right; font-weight: 700; }
+  .cat-val small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+
+  .split { display: flex; height: 10px; border-radius: 6px; overflow: hidden; gap: 2px; margin: 10px 0 8px; }
+  .split > div:first-child { background: var(--s1); }
+  .split > div:last-child { background: var(--s3); }
+
+  .badge { display: inline-block; border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; border: 1px solid currentColor; }
+
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .filters input, .filters select { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 13px; width: 100%; }
+  .filters input { grid-column: 1 / -1; }
+  .mov-group { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 6px; }
+  .mov { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .mov-concepto { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mov-imp { font-size: 14px; font-weight: 700; text-align: right; white-space: nowrap; }
+  .mov-meta { font-size: 11px; color: var(--muted); }
+  .mov-saldo { font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; }
+  .tag { display: inline-block; border: 1px solid var(--border); border-radius: 6px; padding: 0 5px; margin-right: 4px; }
+  .tag.prof { border-color: var(--s3); color: var(--s3); }
+  .tag.pers { border-color: var(--s1); color: var(--s1); }
+  .tag.tras { color: var(--muted); }
+  .tag.alq { border-color: var(--s4); color: var(--s4); }
+  .tag.pend { border-color: var(--warn); color: var(--warn); }
+  .tag.ok { border-color: var(--good); color: var(--good); }
+  .empty { text-align: center; color: var(--muted); padding: 24px 0; font-size: 13px; }
+
+  .acc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .acc { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; border-top: 3px solid var(--c); }
+  .acc-name { font-size: 13px; font-weight: 700; }
+  .acc-desc { font-size: 11px; color: var(--muted); }
+  .acc-saldo { font-size: 20px; font-weight: 800; margin-top: 6px; }
+  .acc-var { font-size: 11px; margin-top: 2px; }
+
+  table.q { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.q th, table.q td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.q th:first-child, table.q td:first-child { text-align: left; color: var(--text-2); }
+  table.q th { color: var(--muted); font-weight: 600; }
+  table.q td.cur, table.q th.cur { color: var(--accent); }
+
+  .calc { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .calc label, .form label { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .calc input, .calc select, .form input, .form select { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 14px; width: 100%; }
+  .flow { margin-top: 12px; }
+  .flow > div { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .flow > div:last-child { border-bottom: none; }
+  .flow b { font-size: 14px; }
+
+  .btn { display: block; width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; font-size: 14px; text-align: center; margin-top: 8px; }
+  .btn.primary { background: var(--accent); color: #000; font-weight: 700; border: none; }
+  .btn.danger { color: var(--bad); }
+  .msg { font-size: 13px; margin-top: 10px; min-height: 18px; color: var(--accent); }
+  ol.steps { padding-left: 18px; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+  dialog { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 40px); margin: auto; }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  .form { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form h3 { grid-column: 1 / -1; font-size: 17px; }
+  .form .full { grid-column: 1 / -1; }
+  .form .actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+  .form .actions .btn { margin-top: 0; }
+  .form .summary { grid-column: 1 / -1; font-size: 13px; color: var(--text-2); background: var(--card); border-radius: 10px; padding: 8px 10px; }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 560px; background: #111; border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-btn { flex: 1; background: none; border: none; padding: 12px 0 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .nav-icon { font-size: 19px; }
+  .nav-label { font-size: 10px; color: var(--muted); }
+  .nav-btn.active .nav-label { color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header" id="header">
+  <div class="header-label">Mis finanzas</div>
+  <div class="header-row">
+    <div class="period-nav">
+      <button id="prev" aria-label="Periodo anterior">‹</button>
+      <div class="period-title" id="periodTitle">—</div>
+      <button id="next" aria-label="Periodo siguiente">›</button>
+    </div>
+    <div class="seg" id="modeSeg">
+      <button data-mode="mes" class="on">Mes</button>
+      <button data-mode="tri">Trim.</button>
+      <button data-mode="ano">Año</button>
+    </div>
+  </div>
+  <div class="chips" id="ambitoChips">
+    <button class="chip on" data-ambito="todo">Todo</button>
+    <button class="chip" data-ambito="personal">🏠 Personal</button>
+    <button class="chip" data-ambito="profesional">💼 Profesional</button>
+    <button class="chip" data-ambito="alquiler">🏡 Alquiler casa</button>
+  </div>
+</div>
+
+<div id="demoBanner" class="demo-banner" hidden>
+  <b>Estás viendo datos de ejemplo inventados.</b> Importa tu archivo en la pestaña <b>Datos</b> para ver los tuyos.
+</div>
+
+<!-- RESUMEN -->
+<section class="tab active" id="tab-resumen">
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value" id="kIng">—</div><div class="kpi-sub" id="kIngSub"></div></div>
+    <div class="kpi"><div class="kpi-label">Gastos</div><div class="kpi-value" id="kGas">—</div><div class="kpi-sub" id="kGasSub"></div></div>
+    <div class="kpi"><div class="kpi-label">Resultado</div><div class="kpi-value" id="kRes">—</div><div class="kpi-sub" id="kResSub"></div></div>
+    <div class="kpi"><div class="kpi-label">Tasa de ahorro</div><div class="kpi-value" id="kAho">—</div><div class="kpi-sub">resultado / ingresos</div></div>
+  </div>
+
+  <h2>Salud financiera</h2>
+  <div class="card" id="saludCard"></div>
+
+  <h2>Ingresos vs gastos · últimos 6 meses</h2>
+  <div class="card">
+    <div class="legend"><span><i style="background:var(--s1)"></i>Ingresos</span><span><i style="background:var(--s2)"></i>Gastos</span></div>
+    <div class="chart-wrap" id="chartMeses"></div>
+  </div>
+
+  <h2>Gastos por categoría</h2>
+  <div class="card" id="catList"></div>
+
+  <h2>Reparto de los gastos</h2>
+  <div class="card" id="splitCard"></div>
+  <p class="hint" style="margin-top:10px">Los traspasos entre tus cuentas (a IVA, a la hucha…) y los Bizum de deudas no cuentan como ingreso ni gasto.</p>
+</section>
+
+<!-- MOVIMIENTOS -->
+<section class="tab" id="tab-movs">
+  <div class="filters">
+    <input id="fBuscar" type="search" placeholder="Buscar concepto…">
+    <select id="fCuenta"></select>
+    <select id="fCat"></select>
+  </div>
+  <div id="movList"></div>
+</section>
+
+<!-- AUTÓNOMO -->
+<section class="tab" id="tab-auto">
+  <div id="autoTop"></div>
+  <h2>Facturas emitidas <button class="add" id="addFactura">+ Nueva</button></h2>
+  <div class="card" id="factList"></div>
+  <div id="pendCard"></div>
+  <h2>Gastos con factura <button class="add" id="addRecibida">+ Nuevo</button></h2>
+  <div class="card" id="recList"></div>
+  <h2>Resumen del año</h2>
+  <div class="card" id="anualCard"></div>
+  <h2>Alquiler de la casa · Renta</h2>
+  <div class="card" id="alqCard"></div>
+  <p class="hint" style="margin-top:10px">Estimación orientativa (estimación directa simplificada, sin el 5 % de gastos de difícil justificación). Revisa siempre los importes antes de presentar.</p>
+</section>
+
+<!-- AHORRO -->
+<section class="tab" id="tab-ahorro">
+  <div class="acc-grid" id="accGrid"></div>
+  <h2>Evolución del saldo</h2>
+  <div class="card">
+    <div class="legend" id="accLegend"></div>
+    <div class="chart-wrap" id="chartSaldos"></div>
+  </div>
+
+  <h2>Fondo de emergencia</h2>
+  <div class="card" id="fondoCard"></div>
+
+  <h2>Reparto de un cobro</h2>
+  <div class="card">
+    <div class="calc">
+      <label>Base imponible (€)<input id="rBase" type="number" inputmode="decimal" step="0.01" value="1000"></label>
+      <label>Tipo de trabajo<select id="rTipo">
+        <option value="servicio">Escenografía (21 % IVA, 15 % IRPF)</option>
+        <option value="docencia">Docencia (exenta, 15 % IRPF)</option>
+        <option value="venta">Venta taller a particular (21 % IVA)</option>
+      </select></label>
+    </div>
+    <div class="flow" id="repartoFlow"></div>
+  </div>
+
+  <h2>Metas de ahorro <button class="add" id="addMeta">+ Nueva</button></h2>
+  <div class="card" id="metasCard"></div>
+
+  <h2>Simulador de inversión</h2>
+  <div class="card">
+    <div class="calc">
+      <label>Capital inicial (€)<input id="sIni" type="number" inputmode="decimal" value="0"></label>
+      <label>Aportación mensual (€)<input id="sMes" type="number" inputmode="decimal" value="150"></label>
+      <label>Años<input id="sAnos" type="number" inputmode="numeric" value="15"></label>
+      <label>Rentabilidad anual (%)<input id="sRent" type="number" inputmode="decimal" step="0.5" value="5"></label>
+    </div>
+    <div class="rows" id="simRes" style="margin-top:12px"></div>
+    <div class="legend" style="margin-top:10px"><span><i style="background:var(--s1)"></i>Lo que aportas</span><span><i style="background:var(--s3)"></i>Valor estimado</span></div>
+    <div class="chart-wrap" id="chartSim"></div>
+    <p class="hint" style="margin-top:8px">La rentabilidad no está garantizada: un 5 % anual es una hipótesis razonable a largo plazo para una cartera indexada global, pero habrá años en negativo.</p>
+  </div>
+
+  <h2>Estrategia por pasos</h2>
+  <div class="card" id="estrategiaCard"></div>
+  <p class="hint" style="margin-top:10px">Esto es una guía general, no asesoramiento financiero personalizado.</p>
+</section>
+
+<!-- DATOS -->
+<section class="tab" id="tab-datos">
+  <h2>Cómo funciona</h2>
+  <div class="card">
+    <ol class="steps">
+      <li>Me pasas el PDF (o el Excel) del extracto en el chat de Claude.</li>
+      <li>Yo extraigo y clasifico los movimientos y te devuelvo un archivo <b>.json</b>.</li>
+      <li>Lo importas aquí. Se guarda <b>solo en este dispositivo</b> y no se sube a ningún sitio.</li>
+      <li>Si algo está mal clasificado, toca el movimiento y cámbialo.</li>
+    </ol>
+  </div>
+
+  <h2>Importar</h2>
+  <div class="card">
+    <input type="file" id="fileInput" accept=".json,application/json" hidden>
+    <button class="btn primary" id="btnImport">📥 Importar archivo</button>
+    <p class="hint" style="margin-top:8px">Si ya existe un elemento con el mismo identificador, se actualiza; no se duplica.</p>
+    <div class="msg" id="importMsg"></div>
+  </div>
+
+  <h2>Copia de seguridad</h2>
+  <div class="card">
+    <div class="hint" id="dataInfo"></div>
+    <button class="btn" id="btnExport">💾 Descargar todos mis datos (.json)</button>
+    <button class="btn danger" id="btnReset">🗑️ Borrar mis datos de este dispositivo</button>
+  </div>
+</section>
+
+<div class="tooltip" id="tt"></div>
+<dialog id="dlg"><form class="form" id="dlgForm" method="dialog"></form></dialog>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="resumen"><span class="nav-icon">📊</span><span class="nav-label">Resumen</span></button>
+  <button class="nav-btn" data-tab="movs"><span class="nav-icon">📄</span><span class="nav-label">Movimientos</span></button>
+  <button class="nav-btn" data-tab="auto"><span class="nav-icon">💼</span><span class="nav-label">Autónomo</span></button>
+  <button class="nav-btn" data-tab="ahorro"><span class="nav-icon">🐷</span><span class="nav-label">Ahorro</span></button>
+  <button class="nav-btn" data-tab="datos"><span class="nav-icon">⚙️</span><span class="nav-label">Datos</span></button>
+</nav>
+
+<script src="demo.js"></script>
+<script>
+const STORE_KEY = 'finanzas-datos-v1';
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESES_L = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const ACC_COLORS = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)'];
+const CUENTAS_DEFECTO = [
+  { id: 'gastos', nombre: 'Gastos', descripcion: 'Día a día y recibos' },
+  { id: 'cobros', nombre: 'Cobros', descripcion: 'Donde entran los pagos' },
+  { id: 'iva', nombre: 'IVA', descripcion: 'Reserva para Hacienda' },
+  { id: 'hucha', nombre: 'Hucha', descripcion: 'Ahorro' },
+];
+// Árbol de categorías (basado en tu hoja "Presupuesto vida")
+const CATEGORIAS = {
+  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Suministros', 'Comunidad', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Fianzas', 'Gastos repercutidos', 'Alquiler Passatemps', 'Alquiler Verd 1 y 2'],
+  'Trabajo': ['Ingresos', 'Cuota autónomos', 'Material trabajo', 'Transporte laboral', 'Dietas', 'Software', 'Alquiler estudio', 'Estudio', 'Gestoría', 'Formación', 'Espacio de trabajo', 'Adelantos para material', 'Prestación desempleo'],
+  'Tecnología': ['Internet', 'Móvil', 'Equipos', 'Reparaciones', 'Suscripciones'],
+  'Comida': ['Supermercado', 'Panadería', 'Comer fuera'],
+  'Salud': ['Farmacia', 'Terapia', 'Dentista'],
+  'Transporte': ['Transporte público', 'Combustible', 'Parking', 'Peaje', 'Lavado vehículo', 'ITV', 'Revisiones', 'Seguro vehículo', 'Impuesto vehículo', 'Multas', 'Equipamiento'],
+  'Educación': ['Cursos', 'Clases'],
+  'Ocio': ['Viajes', 'Cultura', 'Restaurantes', 'Copas', 'Deporte'],
+  'Personales': ['Peluquería', 'Higiene', 'Efectivo', 'Bizum enviado', 'Otros personales'],
+  'Compras': ['Online', 'Tiendas', 'Devoluciones'],
+  'Finanzas': ['Hacienda IRPF', 'Hacienda IVA', 'Gestoría Renta', 'Seguro vida', 'Seguros', 'Donaciones', 'Comisiones', 'Tasas', 'Deudas / reembolsos'],
+  'Ropa': ['Ropa', 'Calzado'],
+  'Traspaso': [],
+  'Otros': [],
+};
+const AMBITOS = { personal: 'personal', profesional: 'profesional', alquiler: 'alquiler casa', traspaso: 'no computa' };
+const CAT_RECIBIDAS = ['Material', 'Herramientas', 'Transporte', 'Formación', 'Software', 'Servicios', 'Suministros', 'Otros'];
+const TIPOS_FACTURA = {
+  servicio: { label: 'Escenografía / servicio', iva: 21, irpf: 15 },
+  docencia: { label: 'Docencia (exenta de IVA)', iva: 0, irpf: 15 },
+  venta: { label: 'Venta taller a particular', iva: 21, irpf: 0 },
+};
+const PLAZOS = ['20 de abril', '20 de julio', '20 de octubre', '30 de enero'];
+
+// ---------- Datos ----------
+function cargarGuardados() {
+  try { const raw = localStorage.getItem(STORE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function normalizar(d) {
+  d.cuentas = d.cuentas && d.cuentas.length ? d.cuentas : CUENTAS_DEFECTO;
+  for (const k of ['movimientos', 'facturas', 'recibidas', 'metas']) d[k] = Array.isArray(d[k]) ? d[k] : [];
+  d.config = Object.assign({ mesesFondo: 6, pctHucha: 10, extraIrpf: 5, pctInteres: 30, reduccionAlquiler: 50, tipoMarginal: 30 }, d.config || {});
+  return d;
+}
+let DATA = normalizar(cargarGuardados() || structuredClone(window.FINANZAS_DEMO || {}));
+function guardar() {
+  if (DATA.demo) return true; // los datos de ejemplo no se guardan
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); return true; } catch { return false; }
+}
+
+const eur = (n, dec = 0) => (n || 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: dec, maximumFractionDigits: dec });
+const eur2 = n => eur(n, 2);
+const r2 = n => Math.round(n * 100) / 100;
+const ym = f => f.slice(0, 7);
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const parseF = f => { const [y, m, d] = f.split('-').map(Number); return new Date(y, m - 1, d); };
+const fCorta = f => parseF(f).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const cuentaNombre = id => (DATA.cuentas.find(c => c.id === id) || { nombre: id === 'excel' ? 'Histórico Excel' : id.startsWith('c') && /^c\d+$/.test(id) ? `Cuenta …${id.slice(1)}` : id }).nombre;
+const nuevoId = p => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+// ---------- Estado ----------
+const ultimaFecha = () => [...DATA.movimientos, ...DATA.facturas].reduce((a, m) => m.fecha > a ? m.fecha : a, '');
+const state = { tab: 'resumen', mode: 'mes', ambito: 'todo', ref: null };
+function resetRef() { const u = ultimaFecha(); state.ref = u ? parseF(u) : new Date(); }
+resetRef();
+
+function periodoDe(ref, mode) {
+  const y = ref.getFullYear(), m = ref.getMonth();
+  let ini, fin, titulo;
+  if (mode === 'mes') { ini = new Date(y, m, 1); fin = new Date(y, m + 1, 0); titulo = `${MESES_L[m]} ${y}`; }
+  else if (mode === 'tri') { const q = Math.floor(m / 3); ini = new Date(y, q * 3, 1); fin = new Date(y, q * 3 + 3, 0); titulo = `${q + 1}T ${y}`; }
+  else { ini = new Date(y, 0, 1); fin = new Date(y, 11, 31); titulo = `${y}`; }
+  return { ini: iso(ini), fin: iso(fin), titulo };
+}
+const periodo = () => periodoDe(state.ref, state.tab === 'auto' ? 'tri' : state.mode);
+const pasoMeses = () => state.tab === 'auto' ? 3 : state.mode === 'mes' ? 1 : state.mode === 'tri' ? 3 : 12;
+function mover(dir) { const r = state.ref; state.ref = new Date(r.getFullYear(), r.getMonth() + dir * pasoMeses(), 1); render(); }
+const enPeriodo = (m, p) => m.fecha >= p.ini && m.fecha <= p.fin;
+const pasaAmbito = m => state.ambito === 'todo' || m.ambito === state.ambito;
+const esReal = m => m.ambito !== 'traspaso';
+
+// Reparte un movimiento en partes {ambito, ing, gas}:
+//  - compartido: % que pertenece a su ámbito; el resto es personal (p. ej. furgoneta 50 % trabajo)
+//  - reembolso: un abono que reduce el gasto de su categoría (p. ej. la parte del alquiler que paga Aleix)
+function partes(m) {
+  if (!esReal(m)) return [];
+  const base = m.importe < 0 ? { ing: 0, gas: -m.importe } : m.reembolso ? { ing: 0, gas: -m.importe } : { ing: m.importe, gas: 0 };
+  if (!m.compartido || m.ambito === 'personal') return [{ ambito: m.ambito, ...base }];
+  const p = m.compartido / 100;
+  return [{ ambito: m.ambito, ing: base.ing * p, gas: base.gas * p }, { ambito: 'personal', ing: base.ing * (1 - p), gas: base.gas * (1 - p) }];
+}
+function totales(movs, ambito = state.ambito) {
+  let ing = 0, gas = 0;
+  for (const m of movs) for (const x of partes(m)) { if (ambito !== 'todo' && x.ambito !== ambito) continue; ing += x.ing; gas += x.gas; }
+  return { ing, gas, res: ing - gas };
+}
+function mesesConDatos(n) {
+  // últimos n meses (terminando en el último mes con datos) que tienen movimientos
+  const u = ultimaFecha(); if (!u) return [];
+  const end = parseF(u), out = [];
+  for (let i = 0; i < n; i++) { const d = new Date(end.getFullYear(), end.getMonth() - i, 1); const k = ym(iso(d)); if (DATA.movimientos.some(m => ym(m.fecha) === k)) out.push(k); }
+  return out;
+}
+function medias() {
+  const meses = mesesConDatos(6); const n = meses.length || 1;
+  const movs = DATA.movimientos.filter(m => meses.includes(ym(m.fecha)));
+  const pers = totales(movs, 'personal'), prof = totales(movs, 'profesional'), alq = totales(movs, 'alquiler'), tot = totales(movs, 'todo');
+  return { meses: meses.length, costeVida: pers.gas / n, gastoProf: prof.gas / n, alquilerNeto: alq.res / n, ingreso: tot.ing / n, resultado: tot.res / n };
+}
+
+// ---------- Tooltip ----------
+const tt = document.getElementById('tt');
+function showTT(ev, html) {
+  tt.innerHTML = html; tt.style.display = 'block';
+  const x = ev.clientX, y = ev.clientY, w = tt.offsetWidth, h = tt.offsetHeight;
+  tt.style.left = Math.min(Math.max(8, x - w / 2), innerWidth - w - 8) + 'px';
+  tt.style.top = (y - h - 14 < 8 ? y + 18 : y - h - 14) + 'px';
+}
+function hideTT() { tt.style.display = 'none'; }
+document.addEventListener('scroll', hideTT, { passive: true });
+document.addEventListener('pointerdown', e => { if (!e.target.closest('[data-tt]')) hideTT(); });
+function bindTT(root) {
+  root.querySelectorAll('[data-tt]').forEach(el => {
+    if (!el.dataset.tt) return;
+    const h = e => showTT(e, el.dataset.tt);
+    el.addEventListener('pointerenter', h); el.addEventListener('pointermove', h);
+    el.addEventListener('pointerdown', h); el.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTT(); });
+  });
+}
+
+// ---------- Escalas y gráficos ----------
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p; }
+const kfmt = v => Math.abs(v) >= 1000 ? (v / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 }) + 'k' : String(Math.round(v));
+
+function lineChart(box, { labels, series, colors, xLabel, tipTitle, height = 200 }) {
+  // labels: array de claves en X; series: [{nombre, valores[]}]
+  const all = series.flatMap(s => s.valores).filter(v => v != null);
+  if (labels.length < 2 || !all.length) { box.innerHTML = '<div class="empty">Sin datos</div>'; return; }
+  const W = box.clientWidth || 320, H = height, padL = 36, padR = 8, padB = 22, padT = 8;
+  const lo = Math.min(0, ...all), hi = Math.max(1, ...all);
+  const stp = niceMax((hi - lo) / 4), max = Math.ceil(hi / stp) * stp, min = Math.floor(lo / stp) * stp;
+  const x = i => padL + (W - padL - padR) * i / (labels.length - 1);
+  const y = v => padT + (H - padT - padB) * (1 - (v - min) / (max - min || 1));
+  let s = `<svg width="${W}" height="${H}" role="img">`;
+  for (let v = min; v <= max + 1e-9; v += stp) { const yy = y(v); s += `<line x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}" stroke="${Math.abs(v) < 1e-9 ? '#555' : 'var(--grid)'}"/><text x="${padL - 6}" y="${yy + 3}" text-anchor="end">${kfmt(v)}</text>`; }
+  let lastX = -99;
+  labels.forEach((l, i) => { const t = xLabel(l, i); if (t && x(i) - lastX > 34) { s += `<text x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === labels.length - 1 ? 'end' : 'middle'}">${t}</text>`; lastX = x(i); } });
+  series.forEach((ser, k) => {
+    let path = '', pen = false;
+    ser.valores.forEach((v, i) => { if (v == null) { pen = false; return; } path += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`; pen = true; });
+    s += `<path d="${path}" fill="none" stroke="${colors[k]}" stroke-width="2" stroke-linejoin="round"/>`;
+  });
+  s += `<line class="xh" x1="0" x2="0" y1="${padT}" y2="${H - padB}" stroke="#777" stroke-dasharray="3 3" visibility="hidden"/>`;
+  s += `<rect class="hit" x="${padL}" y="${padT}" width="${W - padL - padR}" height="${H - padT - padB}" fill="transparent" data-tt=""/></svg>`;
+  box.innerHTML = s;
+  const hit = box.querySelector('.hit'), xh = box.querySelector('.xh');
+  const onMove = e => {
+    const r = hit.getBoundingClientRect();
+    const j = Math.max(0, Math.min(labels.length - 1, Math.round((e.clientX - r.left) / r.width * (labels.length - 1))));
+    xh.setAttribute('x1', x(j)); xh.setAttribute('x2', x(j)); xh.setAttribute('visibility', 'visible');
+    showTT(e, `<div class="tt-title">${tipTitle(labels[j], j)}</div>` + series.map((se, k) => `<div><i style="background:${colors[k]}"></i>${esc(se.nombre)} <b>${se.valores[j] != null ? eur(se.valores[j]) : '—'}</b></div>`).join(''));
+  };
+  hit.addEventListener('pointermove', onMove); hit.addEventListener('pointerdown', onMove);
+  hit.addEventListener('pointerleave', e => { xh.setAttribute('visibility', 'hidden'); if (e.pointerType === 'mouse') hideTT(); });
+}
+
+function chartMeses() {
+  const box = document.getElementById('chartMeses');
+  const end = parseF(periodo().fin);
+  const meses = [];
+  for (let i = 5; i >= 0; i--) meses.push(ym(iso(new Date(end.getFullYear(), end.getMonth() - i, 1))));
+  const datos = meses.map(k => ({ k, ...totales(DATA.movimientos.filter(m => ym(m.fecha) === k)) }));
+  const W = box.clientWidth || 320, H = 190, padL = 34, padB = 22, padT = 8;
+  const max = niceMax(Math.max(1, ...datos.flatMap(d => [d.ing, d.gas])));
+  const y = v => padT + (H - padT - padB) * (1 - v / max);
+  const gw = (W - padL) / meses.length, bw = Math.min(18, (gw - 14) / 2);
+  let s = `<svg width="${W}" height="${H}" role="img" aria-label="Ingresos y gastos de los últimos 6 meses">`;
+  for (let i = 0; i <= 4; i++) { const v = max * i / 4, yy = y(v); s += `<line x1="${padL}" x2="${W}" y1="${yy}" y2="${yy}" stroke="var(--grid)"/><text x="${padL - 6}" y="${yy + 3}" text-anchor="end">${kfmt(v)}</text>`; }
+  const bar = (x, v, c) => { const h = Math.max(0, y(0) - y(v)); if (h < 0.5) return ''; const r = Math.min(4, h, bw / 2), top = y(v);
+    return `<path d="M${x},${y(0)} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${y(0)} Z" fill="${c}"/>`; };
+  datos.forEach((d, i) => {
+    const cx = padL + gw * i + gw / 2, [yy, mm] = d.k.split('-').map(Number);
+    s += bar(cx - bw - 1, d.ing, 'var(--s1)') + bar(cx + 1, d.gas, 'var(--s2)');
+    s += `<text x="${cx}" y="${H - 6}" text-anchor="middle">${MESES[mm - 1]}</text>`;
+    const tip = `<div class="tt-title">${MESES_L[mm - 1]} ${yy}</div><div><i style="background:var(--s1)"></i>Ingresos <b>${eur(d.ing)}</b></div><div><i style="background:var(--s2)"></i>Gastos <b>${eur(d.gas)}</b></div><div>Resultado <b class="${d.res >= 0 ? 'up' : 'down'}">${eur(d.res)}</b></div>`;
+    s += `<rect x="${padL + gw * i}" y="${padT}" width="${gw}" height="${H - padT - padB}" fill="transparent" data-tt="${esc(tip)}"/>`;
+  });
+  s += `<line x1="${padL}" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="#555"/></svg>`;
+  box.innerHTML = s; bindTT(box);
+}
+
+// ---------- Resumen ----------
+function renderResumen() {
+  const p = periodo(), movs = DATA.movimientos.filter(m => enPeriodo(m, p));
+  const t = totales(movs);
+  const r = state.ref, pa = periodoDe(new Date(r.getFullYear(), r.getMonth() - pasoMeses(), 1), state.mode);
+  const ta = totales(DATA.movimientos.filter(m => enPeriodo(m, pa)));
+  const delta = (a, b, invert) => { if (!b) return 'sin datos del periodo anterior'; const d = (a - b) / b * 100; const good = invert ? d <= 0 : d >= 0; return `<span class="${good ? 'up' : 'down'}">${d >= 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(0)}%</span> vs anterior`; };
+  document.getElementById('kIng').textContent = eur(t.ing);
+  document.getElementById('kIngSub').innerHTML = delta(t.ing, ta.ing, false);
+  document.getElementById('kGas').textContent = eur(t.gas);
+  document.getElementById('kGasSub').innerHTML = delta(t.gas, ta.gas, true);
+  const kr = document.getElementById('kRes'); kr.textContent = eur(t.res); kr.className = 'kpi-value ' + (t.res >= 0 ? 'up' : 'down');
+  document.getElementById('kResSub').textContent = t.res >= 0 ? 'te ha sobrado' : 'has gastado más de lo ingresado';
+  document.getElementById('kAho').textContent = t.ing ? Math.round(t.res / t.ing * 100) + '%' : '—';
+  renderSalud(t); chartMeses(); catList(movs); splitCard(movs);
+}
+
+function renderSalud(t) {
+  const m = medias(), el = document.getElementById('saludCard');
+  if (!m.meses) { el.innerHTML = '<div class="empty">Sin datos todavía</div>'; return; }
+  const hucha = saldoA('hucha', ultimaFecha());
+  const cubiertos = m.costeVida && hucha != null ? hucha / m.costeVida : null;
+  const minimo = Math.max(0, m.costeVida + m.gastoProf - Math.max(0, m.alquilerNeto)) / 0.8;
+  // Estado del periodo (como en tu hoja: peligroso si resultado < 0, justo si no cubre un mes de vida)
+  let estado;
+  if (state.mode !== 'mes') estado = '';
+  else if (t.res < 0) estado = '<span class="badge down">Mes peligroso</span>';
+  else if (t.res < m.costeVida * 0.2) estado = '<span class="badge warn">Mes justo</span>';
+  else estado = '<span class="badge up">Mes bueno</span>';
+  el.innerHTML = `${estado ? `<div style="margin-bottom:8px">${estado}</div>` : ''}<div class="rows">
+    <div><span>Coste de vida medio (personal)</span><b>${eur(m.costeVida)}/mes</b></div>
+    <div><span>Gasto profesional medio</span><b>${eur(m.gastoProf)}/mes</b></div>
+    ${m.alquilerNeto ? `<div><span>Alquiler de la casa (neto, tras hipoteca y gastos)</span><b class="${m.alquilerNeto >= 0 ? 'up' : 'down'}">${eur(m.alquilerNeto)}/mes</b></div>` : ''}
+    <div><span>Ingreso medio</span><b>${eur(m.ingreso)}/mes</b></div>
+    <div><span>Facturación mínima necesaria</span><b>${eur(minimo)}/mes</b></div>
+    <div><span>Meses de vida cubiertos por la hucha</span><b class="${cubiertos == null ? '' : cubiertos >= DATA.config.mesesFondo ? 'up' : cubiertos >= 3 ? 'warn' : 'down'}">${cubiertos == null ? '—' : cubiertos.toFixed(1)}</b></div>
+  </div><p class="hint" style="margin-top:8px">Medias de los últimos ${m.meses} meses con datos. La facturación mínima cubre tu vida y tus gastos de trabajo (descontando lo que te deja el alquiler) dejando un 20 % para impuestos.</p>`;
+}
+
+function catList(movs) {
+  const by = {}, subs = {};
+  for (const m of movs) for (const x of partes(m)) {
+    if (!x.gas || (state.ambito !== 'todo' && x.ambito !== state.ambito)) continue;
+    const c = m.categoria || 'Sin categoría'; by[c] = (by[c] || 0) + x.gas;
+    if (m.subcategoria) { subs[c] = subs[c] || {}; subs[c][m.subcategoria] = (subs[c][m.subcategoria] || 0) + x.gas; }
+  }
+  const rows = Object.entries(by).filter(r => r[1] > 0.5).sort((a, b) => b[1] - a[1]);
+  const total = rows.reduce((a, r) => a + r[1], 0), max = rows.length ? rows[0][1] : 1;
+  const el = document.getElementById('catList');
+  if (!rows.length) { el.innerHTML = '<div class="empty">Sin gastos en este periodo</div>'; return; }
+  el.innerHTML = rows.map(([c, v]) => {
+    const sub = subs[c] ? Object.entries(subs[c]).filter(e => e[1] > 0.5).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([s, x]) => `${esc(s)} ${eur(x)}`).join(' · ') : '';
+    return `<div class="cat-row" data-cat="${esc(c)}"><div>${esc(c)}</div><div class="cat-val">${eur(v)}<small>${Math.round(v / total * 100)}%</small></div>${sub ? `<div class="cat-sub">${sub}</div>` : ''}<div class="bar"><div style="width:${v / max * 100}%"></div></div></div>`;
+  }).join('');
+  el.querySelectorAll('.cat-row').forEach(r => r.addEventListener('click', () => { document.getElementById('fCat').value = r.dataset.cat; irTab('movs'); }));
+}
+
+function splitCard(movs) {
+  const g = { personal: 0, profesional: 0, alquiler: 0 };
+  for (const m of movs) for (const x of partes(m)) if (x.ambito in g) g[x.ambito] += x.gas;
+  const t = g.personal + g.profesional + g.alquiler, el = document.getElementById('splitCard');
+  if (!t) { el.innerHTML = '<div class="empty">Sin gastos en este periodo</div>'; return; }
+  const seg = [['personal', 'Personal', 'var(--s1)'], ['profesional', 'Profesional', 'var(--s3)'], ['alquiler', 'Casa alquilada', 'var(--s4)']].filter(([k]) => g[k]);
+  el.innerHTML = `<div class="legend" style="margin:0">${seg.map(([k, l, c]) => `<span><i style="background:${c}"></i>${l} <b style="color:var(--text)">${eur(g[k])}</b></span>`).join('')}</div>
+    <div class="split">${seg.map(([k, , c]) => `<div style="flex:${g[k]};background:${c}"></div>`).join('')}</div>
+    <div class="hint">${seg.map(([k, l]) => `${Math.round(g[k] / t * 100)}% ${l.toLowerCase()}`).join(' · ')}</div>`;
+}
+
+// ---------- Movimientos ----------
+function initFiltros() {
+  const fc = document.getElementById('fCuenta'), fk = document.getElementById('fCat');
+  const prevC = fc.value, prevK = fk.value;
+  const ids = [...new Set([...DATA.cuentas.map(c => c.id), ...DATA.movimientos.map(m => m.cuenta)])];
+  fc.innerHTML = '<option value="">Todas las cuentas</option>' + ids.map(id => `<option value="${esc(id)}">${esc(cuentaNombre(id))}</option>`).join('');
+  const cats = [...new Set(DATA.movimientos.map(m => m.categoria || 'Sin categoría'))].sort((a, b) => a.localeCompare(b, 'es'));
+  fk.innerHTML = '<option value="">Todas las categorías</option>' + cats.map(c => `<option>${esc(c)}</option>`).join('');
+  fc.value = ids.includes(prevC) ? prevC : ''; fk.value = cats.includes(prevK) ? prevK : '';
+}
+function renderMovs() {
+  const p = periodo(), q = document.getElementById('fBuscar').value.trim().toLowerCase();
+  const fc = document.getElementById('fCuenta').value, fk = document.getElementById('fCat').value;
+  const movs = DATA.movimientos.filter(m => enPeriodo(m, p) && pasaAmbito(m)
+    && (!fc || m.cuenta === fc) && (!fk || (m.categoria || 'Sin categoría') === fk)
+    && (!q || m.concepto.toLowerCase().includes(q) || (m.nota || '').toLowerCase().includes(q) || (m.subcategoria || '').toLowerCase().includes(q)))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const el = document.getElementById('movList');
+  if (!movs.length) { el.innerHTML = '<div class="empty">No hay movimientos con estos filtros</div>'; return; }
+  let html = '', last = '';
+  const tagCls = { personal: 'pers', profesional: 'prof', alquiler: 'alq', traspaso: 'tras' };
+  for (const m of movs) {
+    if (m.fecha !== last) { html += `<div class="mov-group">${parseF(m.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</div>`; last = m.fecha; }
+    html += `<div class="mov" data-id="${esc(m.id)}"><div class="mov-concepto">${esc(m.concepto)}</div><div class="mov-imp ${m.importe >= 0 ? 'up' : ''}">${m.importe >= 0 ? '+' : ''}${eur2(m.importe)}</div>
+      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(AMBITOS[m.ambito] || m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.compartido ? ` · ${m.compartido} % ${esc(m.ambito)}` : ''}${m.reembolso ? ' · resta del gasto' : ''}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
+      <div class="mov-saldo">${m.saldo != null ? 'saldo ' + eur2(m.saldo) : ''}</div></div>`;
+  }
+  const t = totales(movs);
+  el.innerHTML = `<p class="hint" style="margin-top:12px">${movs.length} movimientos · +${eur2(t.ing)} / −${eur2(t.gas)} (sin traspasos). Toca uno para reclasificarlo.</p>` + html;
+  el.querySelectorAll('.mov').forEach(r => r.addEventListener('click', () => editarMovimiento(r.dataset.id)));
+}
+function editarMovimiento(id) {
+  const m = DATA.movimientos.find(x => x.id === id); if (!m) return;
+  abrirForm({
+    titulo: `${m.concepto} · ${eur2(m.importe)}`,
+    campos: [
+      { name: 'ambito', label: 'Ámbito', type: 'select', options: [['personal', 'Personal'], ['profesional', 'Profesional'], ['alquiler', 'Alquiler de la casa'], ['traspaso', 'No computa (traspaso entre cuentas / deudas)']], value: m.ambito },
+      { name: 'categoria', label: 'Categoría', type: 'select', options: Object.keys(CATEGORIAS), value: m.categoria },
+      { name: 'subcategoria', label: 'Subcategoría', type: 'select', options: [''].concat(CATEGORIAS[m.categoria] || []), value: m.subcategoria || '', full: true },
+      { name: 'nota', label: 'Nota', type: 'text', value: m.nota || '', full: true },
+    ],
+    alCambiar(f, campo) {
+      if (campo === 'categoria') { const s = f.elements.subcategoria; s.innerHTML = [''].concat(CATEGORIAS[f.elements.categoria.value] || []).map(o => `<option>${esc(o)}</option>`).join(''); }
+      if (campo === 'ambito' && f.elements.ambito.value === 'traspaso' && f.elements.categoria.value !== 'Finanzas') { f.elements.categoria.value = 'Traspaso'; this.alCambiar(f, 'categoria'); }
+    },
+    guardar(v) { Object.assign(m, { ambito: v.ambito, categoria: v.categoria, subcategoria: v.subcategoria || undefined, nota: v.nota || undefined }); },
+  });
+}
+
+// ---------- Cuentas / saldos ----------
+function saldoA(cuenta, fecha) {
+  let s = null, f = '';
+  for (const m of DATA.movimientos) if (m.cuenta === cuenta && m.fecha <= fecha && m.saldo != null && m.fecha >= f) { s = m.saldo; f = m.fecha; }
+  return s;
+}
+function renderCuentas() {
+  const p = periodo(), hoy = ultimaFecha();
+  const fin = p.fin < hoy ? p.fin : hoy;
+  const dIni = parseF(p.ini); dIni.setDate(dIni.getDate() - 1); const antes = iso(dIni);
+  document.getElementById('accGrid').innerHTML = DATA.cuentas.map((c, i) => {
+    const s = saldoA(c.id, fin), s0 = saldoA(c.id, antes), v = s != null && s0 != null ? s - s0 : null;
+    return `<div class="acc" style="--c:${ACC_COLORS[i % 4]}"><div class="acc-name">${esc(c.nombre)}</div><div class="acc-desc">${esc(c.descripcion || '')}</div>
+      <div class="acc-saldo">${s != null ? eur(s) : '—'}</div><div class="acc-var ${v == null ? '' : v >= 0 ? 'up' : 'down'}">${v == null ? 'sin datos' : (v >= 0 ? '+' : '') + eur(v) + ' en el periodo'}</div></div>`;
+  }).join('');
+  document.getElementById('accLegend').innerHTML = DATA.cuentas.map((c, i) => `<span><i style="background:${ACC_COLORS[i % 4]}"></i>${esc(c.nombre)}</span>`).join('');
+  let ini = p.ini;
+  if (state.mode === 'mes') { const d = parseF(p.fin); ini = iso(new Date(d.getFullYear(), d.getMonth() - 5, 1)); }
+  const dias = []; for (let d = parseF(ini); iso(d) <= fin; d.setDate(d.getDate() + 1)) dias.push(iso(d));
+  lineChart(document.getElementById('chartSaldos'), {
+    labels: dias, colors: ACC_COLORS,
+    series: DATA.cuentas.map(c => ({ nombre: c.nombre, valores: dias.map(d => saldoA(c.id, d)) })),
+    xLabel: (d, i) => (d.slice(8) === '01' || i === 0) ? MESES[+d.slice(5, 7) - 1] : '',
+    tipTitle: d => parseF(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+  });
+}
+
+// ---------- Autónomo: cálculos ----------
+const trimDe = f => Math.floor((+f.slice(5, 7) - 1) / 3) + 1;
+const fechasTrim = (y, q) => ({ ini: `${y}-${String(q * 3 - 2).padStart(2, '0')}-01`, fin: iso(new Date(y, q * 3, 0)) });
+const facturaCalc = f => { const iva = r2(f.base * f.ivaPct / 100), irpf = r2(f.base * f.irpfPct / 100); return { iva, irpf, total: r2(f.base + iva - irpf) }; };
+const validas = () => DATA.facturas.filter(f => f.estado !== 'anulada');
+function calcTrimestre(y, q) {
+  const { ini, fin } = fechasTrim(y, q), ini0 = `${y}-01-01`;
+  const em = validas().filter(f => f.fecha >= ini && f.fecha <= fin);
+  const rec = DATA.recibidas.filter(r => r.fecha >= ini && r.fecha <= fin);
+  const base = em.reduce((a, f) => a + f.base, 0);
+  const ivaRep = em.reduce((a, f) => a + facturaCalc(f).iva, 0);
+  const ret = em.reduce((a, f) => a + facturaCalc(f).irpf, 0);
+  const ded = r => (r.deduciblePct ?? 100) / 100, dedIrpf = r => (r.deducibleIrpfPct ?? r.deduciblePct ?? 100) / 100;
+  const ivaSop = rec.reduce((a, r) => a + r.iva * ded(r), 0);
+  const gastosRec = rec.reduce((a, r) => a + r.base * dedIrpf(r), 0);
+  const cuotas = DATA.movimientos.filter(m => m.fecha >= ini && m.fecha <= fin && m.subcategoria === 'Cuota autónomos' && m.importe < 0).reduce((a, m) => a - m.importe, 0);
+  // acumulados desde el 1 de enero (el 130 es acumulativo)
+  const emAc = validas().filter(f => f.fecha >= ini0 && f.fecha <= fin);
+  const ingAc = emAc.reduce((a, f) => a + f.base, 0);
+  const retAc = emAc.reduce((a, f) => a + facturaCalc(f).irpf, 0);
+  const gasAc = DATA.recibidas.filter(r => r.fecha >= ini0 && r.fecha <= fin).reduce((a, r) => a + r.base * dedIrpf(r), 0)
+    + DATA.movimientos.filter(m => m.fecha >= ini0 && m.fecha <= fin && m.subcategoria === 'Cuota autónomos' && m.importe < 0).reduce((a, m) => a - m.importe, 0);
+  let previos = 0; for (let k = 1; k < q; k++) previos += calcTrimestre(y, k).m130;
+  const rendAc = ingAc - gasAc;
+  const m130 = Math.max(0, r2(rendAc * 0.2 - retAc - previos));
+  const m303 = r2(ivaRep - ivaSop);
+  const conRet = emAc.filter(f => f.irpfPct > 0).reduce((a, f) => a + f.base, 0);
+  return { y, q, ini, fin, em, rec, base, ivaRep, ivaSop, ret, gastos: gastosRec + cuotas, cuotas, m303, ingAc, gasAc, rendAc, retAc, previos, m130, pctRet: ingAc ? conRet / ingAc : 0 };
+}
+
+function renderAutonomo() {
+  const y = state.ref.getFullYear(), q = Math.floor(state.ref.getMonth() / 3) + 1;
+  const c = calcTrimestre(y, q);
+  const aPagar = Math.max(0, c.m303) + c.m130;
+  const saldoIva = saldoA('iva', ultimaFecha());
+  const dif = saldoIva != null ? saldoIva - aPagar : null;
+  const plazo = `${PLAZOS[q - 1]} de ${q === 4 ? y + 1 : y}`;
+  document.getElementById('autoTop').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="kpi-label">Facturado ${q}T</div><div class="kpi-value">${eur(c.base)}</div><div class="kpi-sub">${c.em.length} facturas · base</div></div>
+      <div class="kpi"><div class="kpi-label">A pagar ${q}T</div><div class="kpi-value">${eur(aPagar)}</div><div class="kpi-sub">hasta el ${plazo}</div></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="rows">
+        <div><span>Saldo actual cuenta IVA</span><b>${saldoIva != null ? eur(saldoIva) : '—'}</b></div>
+        <div class="total"><span>${dif == null ? 'Diferencia' : dif >= 0 ? 'Te sobra en la cuenta IVA' : 'Te falta pasar a la cuenta IVA'}</span><b class="${dif == null ? '' : dif >= 0 ? 'up' : 'down'}">${dif != null ? eur(Math.abs(dif)) : '—'}</b></div>
+      </div>
+      <p class="hint" style="margin-top:6px">Compara lo que tienes apartado con lo que te toca pagar este trimestre (303 + 130). Si te sobra, es colchón para la Renta de junio.</p>
+    </div>
+    ${c.em.length ? '' : `<div class="card" style="margin-top:10px;border-color:var(--warn)"><div class="hint"><b class="warn">Sin facturas este trimestre.</b> El 303 hay que presentarlo igualmente (sin actividad o con el IVA de tus gastos a compensar). El 130 también, salvo que estés exento por la regla del 70 %.</div></div>`}
+    <h2>Modelo 303 · IVA</h2>
+    <div class="card"><div class="rows">
+      <div><span>IVA repercutido (en tus facturas)</span><b>${eur2(c.ivaRep)}</b></div>
+      <div><span>IVA soportado (en tus gastos)</span><b>−${eur2(c.ivaSop)}</b></div>
+      <div class="total"><span>${c.m303 >= 0 ? 'A ingresar' : q === 4 ? 'A devolver' : 'A compensar'}</span><b>${eur2(Math.abs(c.m303))}</b></div>
+    </div></div>
+    <h2>Modelo 130 · IRPF</h2>
+    <div class="card"><div class="rows">
+      <div><span>Ingresos desde el 1 de enero</span><b>${eur2(c.ingAc)}</b></div>
+      <div><span>Gastos deducibles desde el 1 de enero</span><b>−${eur2(c.gasAc)}</b></div>
+      <div><span>Rendimiento neto</span><b>${eur2(c.rendAc)}</b></div>
+      <div><span>20 % del rendimiento</span><b>${eur2(Math.max(0, c.rendAc * 0.2))}</b></div>
+      <div><span>Retenciones que te han hecho</span><b>−${eur2(c.retAc)}</b></div>
+      <div><span>Pagos 130 de trimestres anteriores</span><b>−${eur2(c.previos)}</b></div>
+      <div class="total"><span>A ingresar</span><b>${eur2(c.m130)}</b></div>
+    </div>
+    <p class="hint" style="margin-top:6px">${c.ingAc ? `El <b>${Math.round(c.pctRet * 100)} %</b> de tus ingresos de este año lleva retención. ` : ''}Si el año pasado más del 70 % de tus ingresos llevaron retención, no estás obligado a presentar el 130 (pero conviene seguir apartando para la Renta).</p></div>`;
+
+  renderAlquilerFiscal(y);
+  // facturas emitidas
+  const fl = document.getElementById('factList');
+  fl.innerHTML = c.em.length || DATA.facturas.some(f => f.estado === 'anulada' && f.fecha >= c.ini && f.fecha <= c.fin)
+    ? DATA.facturas.filter(f => f.fecha >= c.ini && f.fecha <= c.fin).sort((a, b) => b.fecha.localeCompare(a.fecha) || b.numero.localeCompare(a.numero)).map(f => {
+      const k = facturaCalc(f), cls = f.estado === 'cobrada' ? 'ok' : f.estado === 'anulada' ? 'tras' : 'pend';
+      return `<div class="mov" data-fid="${esc(f.id)}"><div class="mov-concepto"><b>${esc(f.numero)}</b> · ${esc(f.cliente)}</div><div class="mov-imp">${eur2(k.total)}</div>
+        <div class="mov-meta"><span class="tag ${cls}">${esc(f.estado)}</span>${fCorta(f.fecha)} · ${esc(TIPOS_FACTURA[f.tipo]?.label || '')}</div><div class="mov-saldo">base ${eur2(f.base)}</div></div>`;
+    }).join('') : '<div class="empty">No hay facturas en este trimestre</div>';
+  fl.querySelectorAll('[data-fid]').forEach(r => r.addEventListener('click', () => formFactura(DATA.facturas.find(f => f.id === r.dataset.fid))));
+
+  // pendientes de cobro (todas)
+  const pend = DATA.facturas.filter(f => f.estado === 'pendiente');
+  document.getElementById('pendCard').innerHTML = pend.length ? `<h2>Pendiente de cobro</h2><div class="card"><div class="rows">${pend.map(f => {
+    const dias = Math.round((parseF(ultimaFecha() || iso(new Date())) - parseF(f.fecha)) / 864e5);
+    return `<div><span>${esc(f.numero)} · ${esc(f.cliente)} <small class="${dias > 60 ? 'down' : 'warn'}">(${dias} días)</small></span><b>${eur2(facturaCalc(f).total)}</b></div>`;
+  }).join('')}<div class="total"><span>Total</span><b>${eur2(pend.reduce((a, f) => a + facturaCalc(f).total, 0))}</b></div></div></div>` : '';
+
+  // gastos con factura
+  const rl = document.getElementById('recList');
+  rl.innerHTML = c.rec.length ? c.rec.sort((a, b) => b.fecha.localeCompare(a.fecha)).map(r => `<div class="mov" data-rid="${esc(r.id)}"><div class="mov-concepto">${esc(r.concepto)} · ${esc(r.proveedor)}</div><div class="mov-imp">${eur2(r.base + r.iva)}</div>
+      <div class="mov-meta">${fCorta(r.fecha)} · ${esc(r.categoria || '')}${(r.deduciblePct ?? 100) < 100 || r.deducibleIrpfPct != null ? ` · IVA ${r.deduciblePct ?? 100}% / IRPF ${r.deducibleIrpfPct ?? r.deduciblePct ?? 100}%` : ''}</div><div class="mov-saldo">IVA ${eur2(r.iva)}</div></div>`).join('')
+    + `<p class="hint" style="margin-top:8px">Total base ${eur2(c.rec.reduce((a, r) => a + r.base, 0))}. La cuota de autónomos (${eur2(c.cuotas)} este trimestre) se toma de los movimientos del banco.</p>`
+    : '<div class="empty">No hay gastos con factura en este trimestre</div>';
+  rl.querySelectorAll('[data-rid]').forEach(r => r.addEventListener('click', () => formRecibida(DATA.recibidas.find(x => x.id === r.dataset.rid))));
+
+  // resumen anual
+  const qs = [1, 2, 3, 4].map(k => calcTrimestre(y, k));
+  const fila = (lbl, fn) => `<tr><td>${lbl}</td>${qs.map(t => `<td class="${t.q === q ? 'cur' : ''}">${kfmt(fn(t))}</td>`).join('')}<td><b>${kfmt(qs.reduce((a, t) => a + fn(t), 0))}</b></td></tr>`;
+  document.getElementById('anualCard').innerHTML = `<table class="q"><tr><th>${y}</th>${qs.map(t => `<th class="${t.q === q ? 'cur' : ''}">${t.q}T</th>`).join('')}<th>Total</th></tr>
+    ${fila('Facturado (base)', t => t.base)}${fila('Gastos deducibles', t => t.gastos)}${fila('Rendimiento', t => t.base - t.gastos)}
+    ${fila('Retenciones', t => t.ret)}${fila('IVA (303)', t => t.m303)}${fila('IRPF (130)', t => t.m130)}</table>`;
+}
+
+function renderAlquilerFiscal(y) {
+  const movs = DATA.movimientos.filter(m => m.ambito === 'alquiler' && m.fecha.startsWith(String(y)));
+  const el = document.getElementById('alqCard'), cfg = DATA.config;
+  if (!movs.length) { el.innerHTML = '<div class="empty">Sin movimientos del alquiler este año</div>'; return; }
+  const ing = movs.filter(m => m.importe > 0).reduce((a, m) => a + m.importe, 0);
+  const hip = movs.filter(m => m.importe < 0 && m.subcategoria === 'Hipoteca').reduce((a, m) => a - m.importe, 0);
+  const otros = movs.filter(m => m.importe < 0 && m.subcategoria !== 'Hipoteca').reduce((a, m) => a - m.importe, 0);
+  const interes = hip * cfg.pctInteres / 100;
+  const neto = ing - interes - otros, base = Math.max(0, neto) * (1 - cfg.reduccionAlquiler / 100), reserva = base * cfg.tipoMarginal / 100;
+  const meses = new Set(movs.map(m => ym(m.fecha))).size || 1;
+  el.innerHTML = `<div class="rows">
+    <div><span>Alquileres cobrados en ${y}</span><b>${eur(ing)}</b></div>
+    <div><span>Intereses de la hipoteca (≈${cfg.pctInteres} % de las cuotas, ${eur(hip)})</span><b>−${eur(interes)}</b></div>
+    <div><span>Otros gastos de la casa (IBI, seguro, comunidad…)</span><b>−${eur(otros)}</b></div>
+    <div><span>Rendimiento neto (sin amortización)</span><b>${eur(neto)}</b></div>
+    <div><span>Tras reducción del ${cfg.reduccionAlquiler} %</span><b>${eur(base)}</b></div>
+    <div class="total"><span>Reserva para la Renta (al ${cfg.tipoMarginal} %)</span><b class="warn">${eur(reserva)}</b></div>
+  </div>
+  <p class="hint" style="margin-top:8px">Unos <b>${eur(reserva / meses)}/mes</b>. Los alquileres no llevan retención, así que este IRPF se paga entero en la Renta de junio. Solo desgravan los <b>intereses</b> de la hipoteca (no el capital) y además puedes deducir la amortización (3 % del valor de construcción), que reduce bastante el rendimiento: pide el dato del catastro y lo afinamos.</p>
+  <div class="calc" style="margin-top:10px">
+    <label>% intereses en la cuota<input id="cfgInt" type="number" value="${cfg.pctInteres}"></label>
+    <label>Reducción por vivienda %<input id="cfgRed" type="number" value="${cfg.reduccionAlquiler}"></label>
+    <label class="full" style="grid-column:1/-1">Tipo marginal estimado de IRPF %<input id="cfgMarg" type="number" value="${cfg.tipoMarginal}"></label>
+  </div>`;
+  const bind = (id, k) => document.getElementById(id).onchange = e => { cfg[k] = Math.max(0, Math.min(100, +e.target.value || 0)); guardar(); renderAlquilerFiscal(y); };
+  bind('cfgInt', 'pctInteres'); bind('cfgRed', 'reduccionAlquiler'); bind('cfgMarg', 'tipoMarginal');
+}
+function siguienteNumero(fecha) {
+  const y = fecha.slice(0, 4);
+  const n = Math.max(0, ...DATA.facturas.filter(f => (f.numero || '').startsWith(y + '-')).map(f => +f.numero.split('-')[1] || 0));
+  return `${y}-${String(n + 1).padStart(3, '0')}`;
+}
+function formFactura(f) {
+  const nueva = !f, hoy = iso(new Date());
+  f = f || { fecha: hoy, numero: siguienteNumero(hoy), tipo: 'servicio', ivaPct: 21, irpfPct: 15, estado: 'pendiente', base: '' };
+  const resumen = form => { const b = +form.elements.base.value || 0, iva = b * (+form.elements.ivaPct.value || 0) / 100, irpf = b * (+form.elements.irpfPct.value || 0) / 100; return `IVA ${eur2(iva)} · IRPF −${eur2(irpf)} · <b>Total a cobrar ${eur2(b + iva - irpf)}</b>`; };
+  abrirForm({
+    titulo: nueva ? 'Nueva factura emitida' : `Factura ${f.numero}`,
+    campos: [
+      { name: 'numero', label: 'Nº factura', type: 'text', value: f.numero },
+      { name: 'fecha', label: 'Fecha', type: 'date', value: f.fecha },
+      { name: 'tipo', label: 'Tipo', type: 'select', options: Object.entries(TIPOS_FACTURA).map(([k, v]) => [k, v.label]), value: f.tipo, full: true },
+      { name: 'cliente', label: 'Cliente', type: 'text', value: f.cliente || '' },
+      { name: 'nif', label: 'NIF/CIF', type: 'text', value: f.nif || '' },
+      { name: 'concepto', label: 'Concepto', type: 'text', value: f.concepto || '', full: true },
+      { name: 'base', label: 'Base imponible (€)', type: 'number', value: f.base, full: true },
+      { name: 'ivaPct', label: 'IVA %', type: 'number', value: f.ivaPct },
+      { name: 'irpfPct', label: 'Retención IRPF %', type: 'number', value: f.irpfPct },
+      { name: 'estado', label: 'Estado', type: 'select', options: [['pendiente', 'Pendiente'], ['cobrada', 'Cobrada'], ['anulada', 'Anulada']], value: f.estado },
+      { name: 'fechaCobro', label: 'Fecha de cobro', type: 'date', value: f.fechaCobro || '' },
+    ],
+    resumen,
+    alCambiar(form, campo) { if (campo === 'tipo') { const t = TIPOS_FACTURA[form.elements.tipo.value]; form.elements.ivaPct.value = t.iva; form.elements.irpfPct.value = t.irpf; } },
+    guardar(v) {
+      if (!v.cliente || !(+v.base)) return 'Faltan el cliente o la base imponible.';
+      const obj = { ...f, ...v, id: f.id || nuevoId('f'), base: +v.base, ivaPct: +v.ivaPct, irpfPct: +v.irpfPct, fechaCobro: v.fechaCobro || undefined };
+      if (nueva) DATA.facturas.push(obj); else Object.assign(f, obj);
+    },
+    borrar: nueva ? null : () => { DATA.facturas = DATA.facturas.filter(x => x !== f); },
+  });
+}
+function formRecibida(r) {
+  const nueva = !r;
+  r = r || { fecha: iso(new Date()), categoria: 'Material', deduciblePct: 100, base: '', iva: '' };
+  abrirForm({
+    titulo: nueva ? 'Nuevo gasto con factura' : 'Gasto con factura',
+    campos: [
+      { name: 'fecha', label: 'Fecha', type: 'date', value: r.fecha },
+      { name: 'numero', label: 'Nº factura/ticket', type: 'text', value: r.numero || '' },
+      { name: 'proveedor', label: 'Proveedor', type: 'text', value: r.proveedor || '' },
+      { name: 'categoria', label: 'Categoría', type: 'select', options: CAT_RECIBIDAS, value: r.categoria },
+      { name: 'concepto', label: 'Concepto', type: 'text', value: r.concepto || '', full: true },
+      { name: 'base', label: 'Base (€)', type: 'number', value: r.base },
+      { name: 'iva', label: 'IVA (€)', type: 'number', value: r.iva },
+      { name: 'deduciblePct', label: '% deducible IVA', type: 'number', value: r.deduciblePct ?? 100 },
+      { name: 'deducibleIrpfPct', label: '% deducible IRPF', type: 'number', value: r.deducibleIrpfPct ?? r.deduciblePct ?? 100 },
+    ],
+    resumen: form => `Total ticket ${eur2((+form.elements.base.value || 0) + (+form.elements.iva.value || 0))}`,
+    alCambiar(form, campo) { if (campo === 'base' && !form.elements.iva.dataset.tocado) form.elements.iva.value = r2((+form.elements.base.value || 0) * 0.21); if (campo === 'iva') form.elements.iva.dataset.tocado = '1'; },
+    guardar(v) {
+      if (!(+v.base)) return 'Falta la base.';
+      const obj = { ...r, ...v, id: r.id || nuevoId('r'), base: +v.base, iva: +v.iva || 0, deduciblePct: Math.min(100, Math.max(0, +v.deduciblePct || 0)), deducibleIrpfPct: Math.min(100, Math.max(0, +v.deducibleIrpfPct || 0)) };
+      if (nueva) DATA.recibidas.push(obj); else Object.assign(r, obj);
+    },
+    borrar: nueva ? null : () => { DATA.recibidas = DATA.recibidas.filter(x => x !== r); },
+  });
+}
+
+// ---------- Ahorro ----------
+function renderAhorro() {
+  renderCuentas();
+  const m = medias(), cfg = DATA.config;
+  const hucha = saldoA('hucha', ultimaFecha()) ?? 0;
+  const objetivo = m.costeVida * cfg.mesesFondo, pct = objetivo ? Math.min(1, hucha / objetivo) : 0;
+  document.getElementById('fondoCard').innerHTML = `
+    <div class="rows"><div><span>Objetivo (${cfg.mesesFondo} meses × ${eur(m.costeVida)})</span><b>${eur(objetivo)}</b></div><div><span>En la hucha</span><b>${eur(hucha)}</b></div></div>
+    <div class="bar big good"><div style="width:${pct * 100}%"></div></div>
+    <div class="hint">${pct >= 1 ? '✅ Fondo completo. A partir de aquí, lo que ahorres puede ir a inversión.' : `Te faltan <b>${eur(objetivo - hucha)}</b>. Prioriza llenarlo antes de invertir: como autónomo tus ingresos varían y es tu red de seguridad.`}</div>
+    <div class="calc" style="margin-top:10px"><label>Meses de colchón<select id="cfgMeses">${[3, 4, 6, 9, 12].map(n => `<option ${n === cfg.mesesFondo ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <label>% de cada cobro a la hucha<input id="cfgHucha" type="number" inputmode="numeric" value="${cfg.pctHucha}"></label></div>`;
+  document.getElementById('cfgMeses').onchange = e => { cfg.mesesFondo = +e.target.value; guardar(); renderAhorro(); };
+  document.getElementById('cfgHucha').onchange = e => { cfg.pctHucha = Math.max(0, Math.min(100, +e.target.value || 0)); guardar(); renderReparto(); };
+  renderReparto(); renderMetas(); renderSim(); renderEstrategia(m, hucha, objetivo);
+}
+function renderReparto() {
+  const base = +document.getElementById('rBase').value || 0, t = TIPOS_FACTURA[document.getElementById('rTipo').value], cfg = DATA.config;
+  const iva = base * t.iva / 100, ret = base * t.irpf / 100, cobras = base + iva - ret;
+  // IRPF: el 130 es un 20 % del rendimiento menos lo ya retenido; más un extra para la Renta anual
+  const irpf = Math.max(0, base * (20 - t.irpf) / 100) + base * cfg.extraIrpf / 100;
+  const resto = cobras - iva - irpf, hucha = resto * cfg.pctHucha / 100, sueldo = resto - hucha;
+  document.getElementById('repartoFlow').innerHTML = `
+    <div><span>💶</span><span>Te ingresan en <b>Cobros</b></span><b>${eur2(cobras)}</b></div>
+    <div><span>🧾</span><span>A cuenta <b>IVA</b>: IVA (${t.iva}%)</span><b>${eur2(iva)}</b></div>
+    <div><span>🏛️</span><span>A cuenta <b>IVA</b>: reserva IRPF (${Math.max(0, 20 - t.irpf) + cfg.extraIrpf}% de la base)</span><b>${eur2(irpf)}</b></div>
+    <div><span>🐷</span><span>A la <b>Hucha</b> (${cfg.pctHucha}% de lo que queda)</span><b>${eur2(hucha)}</b></div>
+    <div><span>🏠</span><span>Disponible para <b>Gastos</b> / sueldo</span><b class="up">${eur2(sueldo)}</b></div>
+    <p class="hint" style="margin-top:8px">La reserva IRPF incluye un ${cfg.extraIrpf}% extra para la declaración de la Renta, porque con varios clientes el 15 % de retención suele quedarse corto (la reserva del alquiler va aparte, en la pestaña Autónomo). Ajústalo cuando veamos tu última Renta:
+    <input id="cfgExtra" type="number" value="${cfg.extraIrpf}" style="width:60px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:2px 6px"> %</p>`;
+  document.getElementById('cfgExtra').onchange = e => { cfg.extraIrpf = Math.max(0, +e.target.value || 0); guardar(); renderReparto(); };
+}
+function renderMetas() {
+  const el = document.getElementById('metasCard'), hoy = parseF(ultimaFecha() || iso(new Date()));
+  if (!DATA.metas.length) { el.innerHTML = '<div class="empty">Añade una meta (un viaje, una herramienta, la entrada de algo…)</div>'; return; }
+  el.innerHTML = DATA.metas.map(g => {
+    const meses = Math.max(1, Math.round((parseF(g.fecha) - hoy) / (864e5 * 30.44)));
+    const falta = Math.max(0, g.objetivo - (g.ahorrado || 0)), pct = g.objetivo ? Math.min(1, (g.ahorrado || 0) / g.objetivo) : 0;
+    return `<div class="cat-row" data-gid="${esc(g.id)}"><div>${esc(g.nombre)}</div><div class="cat-val">${eur(g.ahorrado || 0)} / ${eur(g.objetivo)}</div>
+      <div class="cat-sub">${falta ? `Aparta <b style="color:var(--text)">${eur(falta / meses)}/mes</b> durante ${meses} meses (hasta ${fCorta(g.fecha)} ${g.fecha.slice(0, 4)})` : '✅ Conseguida'}</div>
+      <div class="bar good"><div style="width:${pct * 100}%"></div></div></div>`;
+  }).join('');
+  el.querySelectorAll('[data-gid]').forEach(r => r.addEventListener('click', () => formMeta(DATA.metas.find(g => g.id === r.dataset.gid))));
+}
+function formMeta(g) {
+  const nueva = !g; g = g || { nombre: '', objetivo: '', ahorrado: 0, fecha: iso(new Date(new Date().getFullYear() + 1, new Date().getMonth(), 1)) };
+  abrirForm({
+    titulo: nueva ? 'Nueva meta' : g.nombre,
+    campos: [
+      { name: 'nombre', label: 'Nombre', type: 'text', value: g.nombre, full: true },
+      { name: 'objetivo', label: 'Objetivo (€)', type: 'number', value: g.objetivo },
+      { name: 'ahorrado', label: 'Ya ahorrado (€)', type: 'number', value: g.ahorrado },
+      { name: 'fecha', label: 'Fecha límite', type: 'date', value: g.fecha, full: true },
+    ],
+    guardar(v) { if (!v.nombre || !(+v.objetivo)) return 'Falta nombre u objetivo.'; const o = { ...g, ...v, id: g.id || nuevoId('m'), objetivo: +v.objetivo, ahorrado: +v.ahorrado || 0 }; if (nueva) DATA.metas.push(o); else Object.assign(g, o); },
+    borrar: nueva ? null : () => { DATA.metas = DATA.metas.filter(x => x !== g); },
+  });
+}
+function renderSim() {
+  const ini = +document.getElementById('sIni').value || 0, mes = +document.getElementById('sMes').value || 0;
+  const anos = Math.min(50, Math.max(1, +document.getElementById('sAnos').value || 1)), rent = (+document.getElementById('sRent').value || 0) / 100;
+  const rm = Math.pow(1 + rent, 1 / 12) - 1;
+  const labels = [], aport = [], valor = []; let v = ini, a = ini;
+  for (let i = 0; i <= anos * 12; i++) { if (i > 0) { v = v * (1 + rm) + mes; a += mes; } if (i % 12 === 0) { labels.push(i / 12); aport.push(r2(a)); valor.push(r2(v)); } }
+  document.getElementById('simRes').innerHTML = `<div><span>Aportas en total</span><b>${eur(a)}</b></div><div><span>Rendimiento estimado</span><b class="up">+${eur(v - a)}</b></div><div class="total"><span>Valor a ${anos} años</span><b>${eur(v)}</b></div>`;
+  lineChart(document.getElementById('chartSim'), { labels, colors: ['var(--s1)', 'var(--s3)'], height: 170,
+    series: [{ nombre: 'Aportado', valores: aport }, { nombre: 'Valor estimado', valores: valor }],
+    xLabel: l => `${l}a`, tipTitle: l => `Año ${l}` });
+}
+function renderEstrategia(m, hucha, objetivo) {
+  const ivaOk = (() => { const y = state.ref.getFullYear(), q = Math.floor(state.ref.getMonth() / 3) + 1, c = calcTrimestre(y, q); const s = saldoA('iva', ultimaFecha()); return s != null && s >= Math.max(0, c.m303) + c.m130; })();
+  const pasos = [
+    [ivaOk, 'Impuestos apartados', 'La cuenta IVA cubre el 303 y el 130 del trimestre. Lo de Hacienda nunca es tuyo.'],
+    [hucha >= m.costeVida * 3, 'Colchón mínimo (3 meses)', `${eur(m.costeVida * 3)} en la hucha, en una cuenta remunerada o un fondo monetario: liquidez inmediata y sin riesgo.`],
+    [hucha >= objetivo, `Fondo completo (${DATA.config.mesesFondo} meses)`, 'Con ingresos irregulares, 6 meses es lo razonable. Sigue en producto sin riesgo.'],
+    [null, 'Sueldo fijo', `Pásate cada mes la misma cantidad de Cobros a Gastos (p. ej. ${eur(Math.ceil(m.costeVida / 50) * 50)}). Lo que sobre en Cobros los meses buenos amortigua los malos.`],
+    [null, 'Jubilación con ventaja fiscal', 'Un plan de pensiones de empleo simplificado para autónomos te deja reducir la base del IRPF (hasta 5.750 €/año en total). Cada 100 € aportados te ahorran tu tipo marginal en la Renta.'],
+    [null, 'Inversión a largo plazo', 'El excedente, en fondos indexados globales de bajo coste (traspasables sin pagar impuestos) con aportaciones mensuales automáticas. Horizonte mínimo: 5–10 años.'],
+  ];
+  document.getElementById('estrategiaCard').innerHTML = `<div class="flow">${pasos.map(([ok, t, d], i) => `<div style="align-items:start"><span>${ok === true ? '✅' : ok === false ? '⬜' : `${i + 1}.`}</span><span><b>${t}</b><br><span class="hint">${d}</span></span><span></span></div>`).join('')}</div>`;
+}
+['rBase', 'rTipo'].forEach(id => document.getElementById(id).addEventListener('input', renderReparto));
+['sIni', 'sMes', 'sAnos', 'sRent'].forEach(id => document.getElementById(id).addEventListener('input', renderSim));
+document.getElementById('addFactura').onclick = () => formFactura(null);
+document.getElementById('addRecibida').onclick = () => formRecibida(null);
+document.getElementById('addMeta').onclick = () => formMeta(null);
+
+// ---------- Formulario genérico ----------
+const dlg = document.getElementById('dlg'), dlgForm = document.getElementById('dlgForm');
+function abrirForm(cfg) {
+  const opt = (o, val) => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(v) === String(val ?? '') ? 'selected' : ''}>${esc(l)}</option>`; };
+  dlgForm.innerHTML = `<h3>${esc(cfg.titulo)}</h3>` + cfg.campos.map(c => `<label class="${c.full ? 'full' : ''}">${esc(c.label)}${c.type === 'select'
+      ? `<select name="${c.name}">${c.options.map(o => opt(o, c.value)).join('')}</select>`
+      : `<input name="${c.name}" type="${c.type}" ${c.type === 'number' ? 'step="0.01" inputmode="decimal"' : ''} value="${esc(c.value ?? '')}">`}</label>`).join('')
+    + (cfg.resumen ? '<div class="summary" id="dlgSum"></div>' : '')
+    + `<div class="msg full" id="dlgMsg" style="color:var(--bad);min-height:0"></div>`
+    + `<div class="actions">${cfg.borrar ? '<button type="button" class="btn danger" id="dlgDel">Borrar</button>' : ''}<button type="button" class="btn" id="dlgCancel">Cancelar</button><button type="submit" class="btn primary">Guardar</button></div>`;
+  const upd = () => { if (cfg.resumen) document.getElementById('dlgSum').innerHTML = cfg.resumen(dlgForm); };
+  dlgForm.oninput = e => { cfg.alCambiar?.call(cfg, dlgForm, e.target.name); upd(); };
+  dlgForm.onchange = e => { if (e.target.tagName === 'SELECT') { cfg.alCambiar?.call(cfg, dlgForm, e.target.name); upd(); } };
+  upd();
+  document.getElementById('dlgCancel').onclick = () => dlg.close();
+  if (cfg.borrar) document.getElementById('dlgDel').onclick = () => { if (confirm('¿Seguro que quieres borrarlo?')) { cfg.borrar(); guardar(); dlg.close(); render(); } };
+  dlgForm.onsubmit = e => {
+    e.preventDefault();
+    const v = Object.fromEntries(new FormData(dlgForm).entries());
+    const err = cfg.guardar(v);
+    if (err) { document.getElementById('dlgMsg').textContent = err; return; }
+    guardar(); dlg.close(); render();
+  };
+  dlg.showModal();
+}
+
+// ---------- Datos ----------
+function renderDatos() {
+  const n = DATA.movimientos.length, f = DATA.movimientos.map(m => m.fecha).sort();
+  document.getElementById('dataInfo').innerHTML = DATA.demo
+    ? 'Ahora mismo hay <b>datos de ejemplo</b>. Al importar tu primer archivo se sustituyen por los tuyos.'
+    : `${n} movimientos${n ? ` (del ${f[0]} al ${f[n - 1]})` : ''}, ${DATA.facturas.length} facturas emitidas, ${DATA.recibidas.length} gastos con factura y ${DATA.metas.length} metas guardados en este dispositivo.`;
+}
+function validar(d) {
+  if (!d || typeof d !== 'object') throw new Error('El archivo no es válido.');
+  if (![d.movimientos, d.facturas, d.recibidas].some(Array.isArray)) throw new Error('El archivo no contiene movimientos ni facturas.');
+  for (const m of d.movimientos || []) if (!m.id || !/^\d{4}-\d{2}-\d{2}$/.test(m.fecha || '') || typeof m.importe !== 'number' || !m.cuenta) throw new Error('Hay un movimiento incompleto: ' + JSON.stringify(m).slice(0, 120));
+  for (const f of d.facturas || []) if (!f.id || !f.fecha || typeof f.base !== 'number') throw new Error('Hay una factura incompleta: ' + JSON.stringify(f).slice(0, 120));
+  for (const r of d.recibidas || []) if (!r.id || !r.fecha || typeof r.base !== 'number') throw new Error('Hay un gasto incompleto: ' + JSON.stringify(r).slice(0, 120));
+}
+function importar(nuevo) {
+  validar(nuevo);
+  const base = DATA.demo ? normalizar({ version: 2 }) : DATA;
+  const res = {};
+  for (const k of ['movimientos', 'facturas', 'recibidas', 'metas']) {
+    const map = new Map(base[k].map(x => [x.id, x])); let add = 0, upd = 0;
+    for (const x of nuevo[k] || []) { map.has(x.id) ? upd++ : add++; map.set(x.id, x); }
+    base[k] = [...map.values()].sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '')); res[k] = { add, upd };
+  }
+  for (const c of nuevo.cuentas || []) { const i = base.cuentas.findIndex(x => x.id === c.id); if (i >= 0) base.cuentas[i] = c; else base.cuentas.push(c); }
+  if (nuevo.config) base.config = Object.assign(base.config, nuevo.config);
+  delete base.demo; base.version = 2; base.actualizado = iso(new Date());
+  DATA = base;
+  if (!guardar()) throw new Error('No se ha podido guardar en este navegador (¿modo privado?).');
+  return res;
+}
+document.getElementById('btnImport').onclick = () => document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = async e => {
+  const msg = document.getElementById('importMsg'), file = e.target.files[0]; if (!file) return;
+  try {
+    const r = importar(JSON.parse(await file.text()));
+    const partes = [['movimientos', 'movimientos'], ['facturas', 'facturas'], ['recibidas', 'gastos con factura'], ['metas', 'metas']].filter(([k]) => r[k].add + r[k].upd).map(([k, l]) => `${l}: ${r[k].add} añadidos${r[k].upd ? `, ${r[k].upd} actualizados` : ''}`);
+    msg.style.color = 'var(--accent)'; msg.textContent = '✅ ' + (partes.join(' · ') || 'Nada nuevo');
+    resetRef(); render();
+  } catch (err) { msg.style.color = 'var(--bad)'; msg.textContent = '❌ ' + err.message; }
+  e.target.value = '';
+};
+document.getElementById('btnExport').onclick = () => {
+  const blob = new Blob([JSON.stringify(DATA, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `finanzas-copia-${iso(new Date())}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+document.getElementById('btnReset').onclick = () => {
+  if (!confirm('¿Borrar todos tus datos de este dispositivo? Descarga antes una copia si la quieres conservar.')) return;
+  try { localStorage.removeItem(STORE_KEY); } catch {}
+  DATA = normalizar(structuredClone(window.FINANZAS_DEMO || {})); resetRef(); render();
+};
+
+// ---------- Navegación ----------
+function trimestreAPresentar() {
+  // Del 1 al 20 del primer mes de un trimestre (30 en enero) aún se presenta el trimestre anterior
+  const u = ultimaFecha(), d = u ? parseF(u) : new Date(), m = d.getMonth();
+  const enPlazo = m % 3 === 0 && d.getDate() <= (m === 0 ? 30 : 20);
+  return enPlazo ? new Date(d.getFullYear(), m - 3, 1) : d;
+}
+function irTab(t) {
+  if (t === 'auto' && state.tab !== 'auto') state.ref = trimestreAPresentar();
+  else if (state.tab === 'auto' && t !== 'auto') resetRef();
+  state.tab = t;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + t));
+  scrollTo(0, 0); render();
+}
+document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => irTab(b.dataset.tab));
+document.getElementById('prev').onclick = () => mover(-1);
+document.getElementById('next').onclick = () => mover(1);
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => { state.mode = b.dataset.mode; document.querySelectorAll('#modeSeg button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+document.querySelectorAll('#ambitoChips .chip').forEach(b => b.onclick = () => { state.ambito = b.dataset.ambito; document.querySelectorAll('#ambitoChips .chip').forEach(x => x.classList.toggle('on', x === b)); render(); });
+['fBuscar', 'fCuenta', 'fCat'].forEach(id => document.getElementById(id).addEventListener('input', renderMovs));
+let rt, lastW = innerWidth; addEventListener('resize', () => { if (innerWidth === lastW) return; lastW = innerWidth; clearTimeout(rt); rt = setTimeout(render, 150); });
+
+function render() {
+  hideTT();
+  document.getElementById('periodTitle').textContent = periodo().titulo;
+  document.getElementById('demoBanner').hidden = !DATA.demo;
+  const sinAmbito = ['auto', 'ahorro', 'datos'].includes(state.tab);
+  document.getElementById('header').classList.toggle('no-ambito', sinAmbito);
+  document.getElementById('modeSeg').style.visibility = state.tab === 'auto' || state.tab === 'datos' ? 'hidden' : 'visible';
+  initFiltros();
+  ({ resumen: renderResumen, movs: renderMovs, auto: renderAutonomo, ahorro: renderAhorro, datos: renderDatos })[state.tab]();
+}
+render();
+</script>
+</body>
+</html>
