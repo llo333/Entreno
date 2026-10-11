@@ -338,7 +338,7 @@ const CUENTAS_DEFECTO = [
 ];
 // Árbol de categorías (basado en tu hoja "Presupuesto vida")
 const CATEGORIAS = {
-  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Suministros', 'Comunidad', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Fianzas', 'Gastos repercutidos', 'Alquiler Passatemps', 'Alquiler Verd 1 y 2'],
+  'Vivienda': ['Alquiler', 'Hipoteca', 'Luz', 'Agua', 'Suministros', 'Comunidad', 'Seguro hogar', 'IBI', 'RSU', 'Reparaciones', 'Equipamiento', 'Hogar', 'Fianzas', 'Gastos repercutidos', 'Suministros casa Palma', 'Alquiler Passatemps', 'Alquiler Verd 1 y 2'],
   'Trabajo': ['Ingresos', 'Cuota autónomos', 'Material trabajo', 'Transporte laboral', 'Dietas', 'Software', 'Alquiler estudio', 'Estudio', 'Gestoría', 'Formación', 'Espacio de trabajo', 'Adelantos para material', 'Prestación desempleo'],
   'Tecnología': ['Internet', 'Móvil', 'Equipos', 'Reparaciones', 'Suscripciones'],
   'Comida': ['Supermercado', 'Panadería', 'Comer fuera'],
@@ -413,9 +413,11 @@ const esReal = m => m.ambito !== 'traspaso';
 // Reparte un movimiento en partes {ambito, ing, gas}:
 //  - compartido: % que pertenece a su ámbito; el resto es personal (p. ej. furgoneta 50 % trabajo)
 //  - reembolso: un abono que reduce el gasto de su categoría (p. ej. la parte del alquiler que paga Aleix)
+//  - pctPropio: % del recibo que es realmente tuyo; el resto lo paga otra persona (p. ej. luz a medias)
 function partes(m) {
   if (!esReal(m)) return [];
-  const base = m.importe < 0 ? { ing: 0, gas: -m.importe } : m.reembolso ? { ing: 0, gas: -m.importe } : { ing: m.importe, gas: 0 };
+  const f = (m.pctPropio ?? 100) / 100, imp = m.importe * f;
+  const base = imp < 0 ? { ing: 0, gas: -imp } : m.reembolso ? { ing: 0, gas: -imp } : { ing: imp, gas: 0 };
   if (!m.compartido || m.ambito === 'personal') return [{ ambito: m.ambito, ...base }];
   const p = m.compartido / 100;
   return [{ ambito: m.ambito, ing: base.ing * p, gas: base.gas * p }, { ambito: 'personal', ing: base.ing * (1 - p), gas: base.gas * (1 - p) }];
@@ -612,7 +614,7 @@ function renderMovs() {
   for (const m of movs) {
     if (m.fecha !== last) { html += `<div class="mov-group">${parseF(m.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}</div>`; last = m.fecha; }
     html += `<div class="mov" data-id="${esc(m.id)}"><div class="mov-concepto">${esc(m.concepto)}</div><div class="mov-imp ${m.importe >= 0 ? 'up' : ''}">${m.importe >= 0 ? '+' : ''}${eur2(m.importe)}</div>
-      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(AMBITOS[m.ambito] || m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.compartido ? ` · ${m.compartido} % ${esc(m.ambito)}` : ''}${m.reembolso ? ' · resta del gasto' : ''}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
+      <div class="mov-meta"><span class="tag ${tagCls[m.ambito] || ''}">${esc(AMBITOS[m.ambito] || m.ambito || '?')}</span>${esc(m.categoria || 'Sin categoría')}${m.subcategoria ? ' › ' + esc(m.subcategoria) : ''} · ${esc(cuentaNombre(m.cuenta))}${m.compartido ? ` · ${m.compartido} % ${esc(m.ambito)}` : ''}${m.pctPropio != null && m.pctPropio < 100 ? ` · ${m.pctPropio} % tuyo` : ''}${m.reembolso ? ' · resta del gasto' : ''}${m.nota ? ' · ' + esc(m.nota) : ''}</div>
       <div class="mov-saldo">${m.saldo != null ? 'saldo ' + eur2(m.saldo) : ''}</div></div>`;
   }
   const t = totales(movs);
