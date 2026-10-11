@@ -208,6 +208,7 @@
 
 <!-- MOVIMIENTOS -->
 <section class="tab" id="tab-movs">
+  <button class="btn" id="addMov" style="margin-top:14px">+ Movimiento manual (efectivo…)</button>
   <div class="filters">
     <input id="fBuscar" type="search" placeholder="Buscar concepto…">
     <select id="fCuenta"></select>
@@ -387,7 +388,7 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const parseF = f => { const [y, m, d] = f.split('-').map(Number); return new Date(y, m - 1, d); };
 const fCorta = f => parseF(f).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const cuentaNombre = id => (DATA.cuentas.find(c => c.id === id) || { nombre: id === 'excel' ? 'Histórico Excel' : id.startsWith('c') && /^c\d+$/.test(id) ? `Cuenta …${id.slice(1)}` : id }).nombre;
+const cuentaNombre = id => (DATA.cuentas.find(c => c.id === id) || { nombre: id === 'excel' ? 'Histórico Excel' : id === 'efectivo' ? 'Efectivo' : id.startsWith('c') && /^c\d+$/.test(id) ? `Cuenta …${id.slice(1)}` : id }).nombre;
 const nuevoId = p => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
 // ---------- Estado ----------
@@ -622,6 +623,30 @@ function renderMovs() {
   el.innerHTML = `<p class="hint" style="margin-top:12px">${movs.length} movimientos · +${eur2(t.ing)} / −${eur2(t.gas)} (sin traspasos). Toca uno para reclasificarlo.</p>` + html;
   el.querySelectorAll('.mov').forEach(r => r.addEventListener('click', () => editarMovimiento(r.dataset.id)));
 }
+function nuevoMovimiento() {
+  abrirForm({
+    titulo: 'Movimiento manual',
+    campos: [
+      { name: 'fecha', label: 'Fecha', type: 'date', value: iso(new Date()) },
+      { name: 'tipo', label: 'Tipo', type: 'select', options: [['ingreso', 'Ingreso'], ['gasto', 'Gasto']], value: 'ingreso' },
+      { name: 'importe', label: 'Importe (€)', type: 'number', value: '' },
+      { name: 'cuenta', label: 'Cuenta', type: 'select', options: [['efectivo', 'Efectivo']].concat(DATA.cuentas.map(c => [c.id, c.nombre])), value: 'efectivo' },
+      { name: 'concepto', label: 'Concepto', type: 'text', value: '', full: true },
+      { name: 'ambito', label: 'Ámbito', type: 'select', options: [['personal', 'Personal'], ['profesional', 'Profesional'], ['alquiler', 'Alquiler de la casa'], ['traspaso', 'No computa']], value: 'personal' },
+      { name: 'categoria', label: 'Categoría', type: 'select', options: Object.keys(CATEGORIAS), value: 'Otros' },
+      { name: 'subcategoria', label: 'Subcategoría', type: 'select', options: [''], value: '', full: true },
+      { name: 'nota', label: 'Nota', type: 'text', value: '', full: true },
+    ],
+    alCambiar(f, campo) { if (campo === 'categoria') { f.elements.subcategoria.innerHTML = [''].concat(CATEGORIAS[f.elements.categoria.value] || []).map(o => `<option>${esc(o)}</option>`).join(''); } },
+    guardar(v) {
+      const imp = Math.abs(+v.importe || 0);
+      if (!imp || !v.concepto || !v.fecha) return 'Faltan la fecha, el importe o el concepto.';
+      DATA.movimientos.push({ id: nuevoId('manual'), manual: true, fecha: v.fecha, cuenta: v.cuenta, concepto: v.concepto, importe: v.tipo === 'gasto' ? -imp : imp,
+        ambito: v.ambito, categoria: v.categoria, subcategoria: v.subcategoria || undefined, nota: v.nota || undefined });
+    },
+  });
+}
+document.getElementById('addMov').onclick = () => nuevoMovimiento();
 function editarMovimiento(id) {
   const m = DATA.movimientos.find(x => x.id === id); if (!m) return;
   abrirForm({
@@ -637,6 +662,7 @@ function editarMovimiento(id) {
       if (campo === 'ambito' && f.elements.ambito.value === 'traspaso' && f.elements.categoria.value !== 'Finanzas') { f.elements.categoria.value = 'Traspaso'; this.alCambiar(f, 'categoria'); }
     },
     guardar(v) { Object.assign(m, { ambito: v.ambito, categoria: v.categoria, subcategoria: v.subcategoria || undefined, nota: v.nota || undefined }); },
+    borrar: m.manual ? () => { DATA.movimientos = DATA.movimientos.filter(x => x !== m); } : null,
   });
 }
 
