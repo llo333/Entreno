@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="0" fill="#0f0f0f"/>
+  <!-- barras -->
+  <rect x="120" y="290" width="64" height="112" rx="14" fill="#3987e5"/>
+  <rect x="224" y="220" width="64" height="182" rx="14" fill="#199e70"/>
+  <rect x="328" y="150" width="64" height="252" rx="14" fill="#c8f55a"/>
+  <!-- moneda -->
+  <circle cx="176" cy="178" r="62" fill="#c8f55a"/>
+  <text x="176" y="203" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="78" font-weight="800" fill="#0f0f0f">€</text>
+</svg>
